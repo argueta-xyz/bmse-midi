@@ -19,7 +19,7 @@ def load_json_config(config_path):
     with open(config_path, 'r') as f:
         return json.load(f)
 
-def create_xml_profile(profile_name, profile_data, joggable_keys):
+def create_xml_profile(profile_name, profile_data):
     """Create XML profile from JSON data."""
     root = ET.Element('settings')
 
@@ -32,28 +32,21 @@ def create_xml_profile(profile_name, profile_data, joggable_keys):
             print(f"Warning: Unknown key {key_name}")
             continue
 
-        # Add single tap mapping
+        # Add single tap mapping OR jog wheel mapping (exclusive)
         if mappings.get('single_tap'):
             setting = ET.SubElement(root, 'setting')
             setting.set('channel', '1')
             setting.set('note', str(key_enum.value))
             setting.set('command_string', mappings['single_tap'])
-
-        # Add jog wheel mapping (control change)
-        if mappings.get('jog') and key_enum in joggable_keys:
-            cc_number = joggable_keys.index(key_enum)
+        elif mappings.get('jog'):
+            # Use the key's enum value as CC number
             setting = ET.SubElement(root, 'setting')
             setting.set('channel', '1')
-            setting.set('controller', str(cc_number))
+            setting.set('controller', str(key_enum.value))
             setting.set('command_string', mappings['jog'])
 
     return root
 
-def get_joggable_keys():
-    """Get list of keys that support jog wheel functionality."""
-    return [SpeedEditorKey.CAM1, SpeedEditorKey.CAM2, SpeedEditorKey.CAM3,
-            SpeedEditorKey.CAM4, SpeedEditorKey.CAM5, SpeedEditorKey.CAM6,
-            SpeedEditorKey.CAM7, SpeedEditorKey.CAM8, SpeedEditorKey.CAM9]
 
 def format_xml(element):
     """Format XML with proper indentation."""
@@ -92,7 +85,6 @@ def main():
 
     # Load configuration
     config = load_json_config(config_path)
-    joggable_keys = get_joggable_keys()
 
     # Create profiles directory if it doesn't exist
     profiles_dir = Path('profiles')
@@ -100,7 +92,7 @@ def main():
 
     # Generate XML files for each profile
     for profile_key, profile_data in config['profiles'].items():
-        xml_root = create_xml_profile(profile_key, profile_data, joggable_keys)
+        xml_root = create_xml_profile(profile_key, profile_data)
         xml_content = format_xml(xml_root)
 
         # Write to file

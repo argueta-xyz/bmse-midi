@@ -11,14 +11,14 @@ Blackmagic Speed Editor MIDI Interface
 Key mappings are defined in `config/key_mappings.json` and support multiple profiles with different interaction modes:
 
 - **single_tap**: Command executed on single key press
-- **double_tap**: Command executed on double key press (for joggable keys)
-- **jog**: Command executed when turning jog wheel while key is held (for joggable keys)
+- **double_tap**: Command executed on double key press (for keys with jog wheel support)
+- **jog**: Command executed when turning jog wheel while key is held (for keys with jog wheel support)
 
 ### Profiles
 
 #### Edit Profile
 - **Purpose**: Photo editing with jog wheel support for parameter adjustment
-- **Joggable Keys**: CAM1-CAM9 keys support jog wheel interaction
+- **Jog Wheel Keys**: CAM1-CAM9 keys support jog wheel interaction (defined by `jog` mapping)
 - **Double-tap**: Resets the associated parameter
 - **Jog**: Adjusts the parameter while key is held
 
@@ -43,8 +43,9 @@ Edit `config/key_mappings.json` to customize key mappings:
 1. Modify existing mappings in the `profiles` section
 2. Add new profiles by creating new profile objects
 3. Update jog modes in the `jog_modes` section
-4. Modify joggable keys in the `joggable_keys` array
-5. Regenerate XML profiles using the script above
+4. Regenerate XML profiles using the script above
+
+Keys automatically support jog wheel functionality when they have a `jog` mapping defined in their profile configuration.
 
 ### MIDI Controller Mappings
 

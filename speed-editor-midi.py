@@ -32,7 +32,6 @@ class MidiHandler(SpeedEditorHandler):
 
 		# Set up jog modes from config
 		self.jog_modes = self._setup_jog_modes()
-		self.joggable_keys = self._setup_joggable_keys()
 
 		self._set_jog_mode_for_key(SpeedEditorKey.SCRL)
 
@@ -81,9 +80,6 @@ class MidiHandler(SpeedEditorHandler):
 			jog_modes[key_enum] = (led_enum, mode_enum)
 		return jog_modes
 
-	def _setup_joggable_keys(self):
-		"""Set up joggable keys from configuration."""
-		return [getattr(SpeedEditorKey, key_name) for key_name in self.config['joggable_keys']]
 
 	def set_profile(self, profile_name):
 		"""Switch to a different profile."""
@@ -100,7 +96,9 @@ class MidiHandler(SpeedEditorHandler):
 
 	def reset_jog_accumulator(self, key):
 		"""Reset the jog accumulator for a specific key."""
-		if key in self.joggable_keys:
+		# Check if key has jog mapping in current profile
+		key_mapping = self.get_key_mapping(key.name)
+		if key_mapping.get('jog'):
 			self.jog_accumulator[key] = self.midi_center
 			print(f"Reset jog accumulator for {key.name}")
 
@@ -136,8 +134,12 @@ class MidiHandler(SpeedEditorHandler):
 		if not self.midi_out:
 			return
 
-		# Find currently active joggable key
-		active_joggable_keys = [key for key in self.joggable_keys if key in self.keys]
+		# Find currently active keys with jog mapping
+		active_joggable_keys = []
+		for key in self.keys:
+			key_mapping = self.get_key_mapping(key.name)
+			if key_mapping.get('jog'):
+				active_joggable_keys.append(key)
 
 		if not active_joggable_keys:
 			return
@@ -172,13 +174,10 @@ class MidiHandler(SpeedEditorHandler):
 		else:
 			midi_value = self.jog_accumulator.get(current_key, self.midi_center)  # Stay at current position
 
-		# Find the index of the current key for CC mapping
-		key_index = self.joggable_keys.index(current_key)
-
 		try:
-			msg = mido.Message('control_change', channel=0, control=key_index, value=midi_value)
+			msg = mido.Message('control_change', channel=0, control=current_key.value, value=midi_value)
 			self.midi_out.send(msg)
-			print(f"Jog MIDI value: {midi_value} for key {current_key.name} (index {key_index})")
+			print(f"Jog MIDI value: {midi_value} for key {current_key.name} (index {current_key.value})")
 		except Exception as e:
 			print(f'Jog MIDI error: {e}')
 
@@ -191,13 +190,16 @@ class MidiHandler(SpeedEditorHandler):
 		# Find keys being released and send note off
 		for k in self.keys:
 			if k not in keys and k != SpeedEditorKey.NONE:
-				if k in self.joggable_keys:
-					# Only send note_off if we sent note_on (double tap)
-					if k in self.double_tapped_keys:
-						self._send_midi('note_off', k)
-						self.double_tapped_keys.discard(k)  # Remove from set
-				else:
+			# Jog & Single Tap are exclusive behaviors for a given key
+			# Check if key has jog mapping
+			key_mapping = self.get_key_mapping(k.name)
+			if key_mapping.get('jog'):
+				# Only send note_off if we sent note_on (double tap)
+				if k in self.double_tapped_keys:
 					self._send_midi('note_off', k)
+					self.double_tapped_keys.discard(k)  # Remove from set
+			else:
+				self._send_midi('note_off', k)
 
 		# Send note on for newly pressed keys
 		for k in keys:
@@ -217,7 +219,9 @@ class MidiHandler(SpeedEditorHandler):
 				# Get key mapping from current profile
 				key_mapping = self.get_key_mapping(k.name)
 
-				if k in self.joggable_keys:
+				# Check if key has jog mapping
+				key_mapping = self.get_key_mapping(k.name)
+				if key_mapping.get('jog'):
 					# Reset accumulator for this key when pressed
 					self.reset_jog_accumulator(k)
 
@@ -250,17 +254,19 @@ class MidiHandler(SpeedEditorHandler):
 		# Find keys being released and toggle led if there is one
 		for k in self.keys:
 			if k not in keys:
-				if k in self.joggable_keys:
-					# Just turn off LED for joggable keys
-					self.leds &= ~getattr(SpeedEditorLed, k.name, 0)
-					self.se.set_leds(self.leds)
-				else:
-					# Select jog mode
-					self._set_jog_mode_for_key(k)
+			# Check if key has jog mapping
+			key_mapping = self.get_key_mapping(k.name)
+			if key_mapping.get('jog'):
+				# Just turn off LED for joggable keys
+				self.leds &= ~getattr(SpeedEditorLed, k.name, 0)
+				self.se.set_leds(self.leds)
+			else:
+				# Select jog mode
+				self._set_jog_mode_for_key(k)
 
-					# Toggle leds
-					self.leds ^= getattr(SpeedEditorLed, k.name, 0)
-					self.se.set_leds(self.leds)
+				# Toggle leds
+				self.leds ^= getattr(SpeedEditorLed, k.name, 0)
+				self.se.set_leds(self.leds)
 
 		self.keys = keys
 
