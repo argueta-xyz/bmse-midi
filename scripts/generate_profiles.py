@@ -32,18 +32,34 @@ def create_xml_profile(profile_name, profile_data):
             print(f"Warning: Unknown key {key_name}")
             continue
 
+        # Validate configuration
+        single_tap = mappings.get('single_tap')
+        double_tap = mappings.get('double_tap')
+        jog = mappings.get('jog')
+
+        # Check for invalid configurations
+        if single_tap is not None and jog is not None:
+            raise ValueError(f"Key {key_name} has both single_tap and jog mappings. Only one is allowed.")
+
         # Add single tap mapping OR jog wheel mapping (exclusive)
-        if mappings.get('single_tap'):
+        if single_tap:
             setting = ET.SubElement(root, 'setting')
             setting.set('channel', '1')
             setting.set('note', str(key_enum.value))
-            setting.set('command_string', mappings['single_tap'])
-        elif mappings.get('jog'):
-            # Use the key's enum value as CC number
+            setting.set('command_string', single_tap)
+        elif jog:
+            # Use the key's enum value as CC number for jog wheel
             setting = ET.SubElement(root, 'setting')
             setting.set('channel', '1')
             setting.set('controller', str(key_enum.value))
-            setting.set('command_string', mappings['jog'])
+            setting.set('command_string', jog)
+
+        # Add double tap mapping if defined (can coexist with jog)
+        if double_tap:
+            setting = ET.SubElement(root, 'setting')
+            setting.set('channel', '2')  # Use channel 2 for double taps
+            setting.set('note', str(key_enum.value))
+            setting.set('command_string', double_tap)
 
     return root
 

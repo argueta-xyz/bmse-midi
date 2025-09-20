@@ -190,16 +190,16 @@ class MidiHandler(SpeedEditorHandler):
 		# Find keys being released and send note off
 		for k in self.keys:
 			if k not in keys and k != SpeedEditorKey.NONE:
-			# Jog & Single Tap are exclusive behaviors for a given key
-			# Check if key has jog mapping
-			key_mapping = self.get_key_mapping(k.name)
-			if key_mapping.get('jog'):
-				# Only send note_off if we sent note_on (double tap)
-				if k in self.double_tapped_keys:
+				# Jog & Single Tap are exclusive behaviors for a given key
+				# Check if key has jog mapping
+				key_mapping = self.get_key_mapping(k.name)
+				if key_mapping.get('jog'):
+					# Only send note_off if we sent note_on (double tap)
+					if k in self.double_tapped_keys:
+						self._send_midi('note_off', k)
+						self.double_tapped_keys.discard(k)  # Remove from set
+				else:
 					self._send_midi('note_off', k)
-					self.double_tapped_keys.discard(k)  # Remove from set
-			else:
-				self._send_midi('note_off', k)
 
 		# Send note on for newly pressed keys
 		for k in keys:
@@ -254,19 +254,19 @@ class MidiHandler(SpeedEditorHandler):
 		# Find keys being released and toggle led if there is one
 		for k in self.keys:
 			if k not in keys:
-			# Check if key has jog mapping
-			key_mapping = self.get_key_mapping(k.name)
-			if key_mapping.get('jog'):
-				# Just turn off LED for joggable keys
-				self.leds &= ~getattr(SpeedEditorLed, k.name, 0)
-				self.se.set_leds(self.leds)
-			else:
-				# Select jog mode
-				self._set_jog_mode_for_key(k)
+				# Check if key has jog mapping
+				key_mapping = self.get_key_mapping(k.name)
+				if key_mapping.get('jog'):
+					# Just turn off LED for joggable keys
+					self.leds &= ~getattr(SpeedEditorLed, k.name, 0)
+					self.se.set_leds(self.leds)
+				else:
+					# Select jog mode
+					self._set_jog_mode_for_key(k)
 
-				# Toggle leds
-				self.leds ^= getattr(SpeedEditorLed, k.name, 0)
-				self.se.set_leds(self.leds)
+					# Toggle leds
+					self.leds ^= getattr(SpeedEditorLed, k.name, 0)
+					self.se.set_leds(self.leds)
 
 		self.keys = keys
 

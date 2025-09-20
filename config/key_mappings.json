@@ -5,53 +5,53 @@
       "description": "Edit mode with jog wheel support for parameter adjustment",
       "mappings": {
         "STOP_PLAY": {
-          "single_tap": "AutoTone",
-          "double_tap": null,
+          "single_tap": null,
+          "double_tap": "AutoTone",
           "jog": null
         },
         "CAM1": {
-          "double_tap": null,
-          "single_tap": "ResetTexture",
+          "single_tap": null,
+          "double_tap": "ResetTexture",
           "jog": "Texture"
         },
         "CAM2": {
-          "double_tap": null,
-          "single_tap": "ResetClarity",
+          "single_tap": null,
+          "double_tap": "ResetClarity",
           "jog": "Clarity"
         },
         "CAM3": {
-          "double_tap": null,
-          "single_tap": "ResetDehaze",
+          "single_tap": null,
+          "double_tap": "ResetDehaze",
           "jog": "Dehaze"
         },
         "CAM4": {
-          "double_tap": null,
-          "single_tap": "ResetShadows",
+          "single_tap": null,
+          "double_tap": "ResetShadows",
           "jog": "Shadows"
         },
         "CAM5": {
-          "double_tap": null,
-          "single_tap": "ResetWhites",
+          "single_tap": null,
+          "double_tap": "ResetWhites",
           "jog": "Whites"
         },
         "CAM6": {
-          "double_tap": null,
-          "single_tap": "ResetBlacks",
+          "single_tap": null,
+          "double_tap": "ResetBlacks",
           "jog": "Blacks"
         },
         "CAM7": {
-          "double_tap": null,
-          "single_tap": "ResetExposure",
+          "single_tap": null,
+          "double_tap": "ResetExposure",
           "jog": "Exposure"
         },
         "CAM8": {
-          "double_tap": null,
-          "single_tap": "ResetContrast",
+          "single_tap": null,
+          "double_tap": "ResetContrast",
           "jog": "Contrast"
         },
         "CAM9": {
-          "double_tap": null,
-          "single_tap": "ResetHighlights",
+          "single_tap": null,
+          "double_tap": "ResetHighlights",
           "jog": "Highlights"
         },
         "SOURCE": {
