@@ -33,7 +33,7 @@ class MidiHandler(SpeedEditorHandler):
 		# Set up jog modes from config
 		self.jog_modes = self._setup_jog_modes()
 
-		self._set_jog_mode_for_key(SpeedEditorKey.SCRL)
+		self._set_jog_mode_for_key(SpeedEditorKey.SHTL)
 
 		self.midi_max = 127
 		self.midi_center = 64
