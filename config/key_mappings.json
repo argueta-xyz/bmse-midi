@@ -5,8 +5,8 @@
       "description": "Edit mode with jog wheel support for parameter adjustment",
       "mappings": {
         "STOP_PLAY": {
-          "single_tap": null,
-          "double_tap": "AutoTone",
+          "single_tap": "AutoTone",
+          "double_tap": null,
           "jog": null
         },
         "CAM1": {

@@ -57,7 +57,7 @@ def create_xml_profile(profile_name, profile_data):
         # Add double tap mapping if defined (can coexist with jog)
         if double_tap:
             setting = ET.SubElement(root, 'setting')
-            setting.set('channel', '2')  # Use channel 2 for double taps
+            setting.set('channel', '1')
             setting.set('note', str(key_enum.value))
             setting.set('command_string', double_tap)
 
