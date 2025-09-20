@@ -18,6 +18,7 @@ from bmd import (
 
 import mido
 import hid
+import platform
 
 class MidiHandler(SpeedEditorHandler):
 	def __init__(self, se, config_path='config/key_mappings.json'):
@@ -55,15 +56,34 @@ class MidiHandler(SpeedEditorHandler):
 		self.jog_accumulator = {}  # Accumulate jog values for smoother control
 
 		# MIDI output setup
+		self.midi_out = self._setup_midi_output()
+
+	def _setup_midi_output(self):
+		"""Set up MIDI output with Windows virtual port support."""
+		if platform.system() == 'Windows':
+			try:
+				# Import Windows-specific MIDI setup
+				from windows.midi_setup import get_midi_output_port
+				midi_out = get_midi_output_port()
+				if midi_out:
+					print(f'MIDI output connected to: {midi_out.name}')
+					return midi_out
+			except ImportError:
+				print('Windows MIDI setup module not found, using default MIDI setup')
+			except Exception as e:
+				print(f'Windows MIDI setup failed: {e}')
+		
+		# Fallback to standard MIDI setup
 		try:
-			self.midi_out = mido.open_output()
-			print(f'MIDI output connected to: {self.midi_out.name}')
+			midi_out = mido.open_output()
+			print(f'MIDI output connected to: {midi_out.name}')
+			return midi_out
 		except Exception as e:
 			print(f'Failed to open MIDI output: {e}')
 			print('Available MIDI ports:')
 			for port in mido.get_output_names():
 				print(f'  - {port}')
-			self.midi_out = None
+			return None
 
 	def _load_config(self, config_path):
 		"""Load the JSON configuration file."""

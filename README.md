@@ -2,9 +2,80 @@
 Blackmagic Speed Editor MIDI Interface
 
 ## Installation
+
+### Prerequisites
 1. Install MIDI2LR
 2. Edit Controllers.xml (OS dependent location) to set table_data.data.item["output"]["active"] = 0
 3. Set profiles directory to `{REPO}/profiles`
+
+### Windows Setup
+Windows requires a virtual MIDI port to connect the Speed Editor to MIDI2LR:
+
+**Option 1: Automated Setup (Recommended)**
+```cmd
+# Run the batch script
+windows/setup_windows_midi.bat
+
+# Or run the PowerShell script
+powershell -ExecutionPolicy Bypass -File windows/setup_windows_midi.ps1
+```
+
+**Option 2: Manual Setup**
+1. Download and install [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html)
+2. Open loopMIDI and create a virtual port named "BMSpeedEditor"
+3. In MIDI2LR, set MIDI Input Device to "loopMIDI Port: BMSpeedEditor"
+
+### macOS/Linux Setup
+No additional setup required - the script will automatically detect and use available MIDI ports.
+
+## Running the Script
+
+### Windows
+```cmd
+# Activate virtual environment (if using one)
+.venv\Scripts\activate
+
+# Run the MIDI controller
+python speed-editor-midi.py
+```
+
+### macOS/Linux
+```bash
+# Activate virtual environment (if using one)
+source .venv/bin/activate
+
+# Run the MIDI controller
+python3 speed-editor-midi.py
+```
+
+The script will automatically:
+- Detect your Speed Editor
+- Set up appropriate MIDI ports (including virtual ports on Windows)
+- Load the configured key mappings
+- Start listening for key presses and jog wheel movements
+
+## Project Structure
+
+```
+bmse-midi/
+├── blackmagic-speededitor/     # BlackMagic Speed Editor Python library
+├── config/                     # Configuration files
+│   ├── key_mappings.json      # Key mapping definitions
+│   └── bmse-midi2lr.txt       # MIDI2LR configuration
+├── profiles/                   # Generated XML profiles for MIDI2LR
+│   ├── BMSpeedEditor-Edit.xml
+│   └── BMSpeedEditor-Library.xml
+├── scripts/                    # Utility scripts
+│   └── generate_profiles.py   # Generate XML from JSON config
+├── windows/                    # Windows-specific files
+│   ├── midi_setup.py          # Windows MIDI port setup
+│   ├── setup_windows_midi.bat # Windows setup script (batch)
+│   ├── setup_windows_midi.ps1 # Windows setup script (PowerShell)
+│   └── install_windows_dependencies.ps1 # Dependency installer
+├── speed-editor-midi.py       # Main MIDI controller script
+├── requirements.txt           # Python dependencies
+└── README.md                  # This file
+```
 
 ## Configuration
 
