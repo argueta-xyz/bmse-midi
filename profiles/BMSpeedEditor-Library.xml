@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<settings>
+  <setting channel="1" note="5" command_string="Key1"/>
+  <setting channel="1" note="26" command_string="SwToMlibrary"/>
+  <setting channel="1" note="1" command_string="ShoVwloupe"/>
+  <setting channel="1" note="2" command_string="ShoVwcompare"/>
+  <setting channel="1" note="44" command_string="ShoVwcompare"/>
+  <setting channel="1" note="3" command_string="ShoVwsurvey"/>
+  <setting channel="1" note="43" command_string="ShoFullPreview"/>
+  <setting channel="1" note="45" command_string="ToggleZoomOffOn"/>
+  <setting channel="1" note="9" command_string="Pick"/>
+  <setting channel="1" note="11" command_string="Reject"/>
+  <setting channel="1" note="10" command_string="RemoveFlag"/>
+  <setting channel="1" note="4" command_string="Select1Left"/>
+  <setting channel="1" note="6" command_string="Select1Right"/>
+  <setting channel="1" note="8" command_string="Next"/>
+  <setting channel="1" note="7" command_string="Prev"/>
+  <setting channel="1" note="27" command_string="SwToMdevelop"/>
+  <setting channel="1" note="60" command_string="AutoTone"/>
+</settings>

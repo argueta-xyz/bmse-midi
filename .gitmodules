@@ -1,0 +1,3 @@
+[submodule "blackmagic-speededitor"]
+	path = blackmagic-speededitor
+	url = https://github.com/octimot/blackmagic-speededitor.git
