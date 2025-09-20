@@ -2,8 +2,9 @@
 
 import os
 import sys
+import json
 from datetime import datetime
-from typing import List
+from typing import List, Dict, Any
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'blackmagic-speededitor'))
 from bmd import (
@@ -19,29 +20,20 @@ import mido
 import hid
 
 class MidiHandler(SpeedEditorHandler):
-	JOG = {
-		SpeedEditorKey.SHTL: (SpeedEditorJogLed.SHTL, SpeedEditorJogMode.ABSOLUTE_DEADZERO),
-		SpeedEditorKey.JOG: (SpeedEditorJogLed.JOG, SpeedEditorJogMode.RELATIVE_2),
-		SpeedEditorKey.SCRL: (SpeedEditorJogLed.SCRL, SpeedEditorJogMode.RELATIVE_2),
-	}
-
-	JOGGABLE_KEYS = [
-		SpeedEditorKey.CAM1,
-		SpeedEditorKey.CAM2,
-		SpeedEditorKey.CAM3,
-		SpeedEditorKey.CAM4,
-		SpeedEditorKey.CAM5,
-		SpeedEditorKey.CAM6,
-		SpeedEditorKey.CAM7,
-		SpeedEditorKey.CAM8,
-		SpeedEditorKey.CAM9
-	]
-
-	def __init__(self, se):
+	def __init__(self, se, config_path='config/key_mappings.json'):
 		self.se = se
 		self.keys = []
 		self.leds = 0
 		self.se.set_leds(self.leds)
+
+		# Load configuration
+		self.config = self._load_config(config_path)
+		self.current_profile = 'edit'  # Default profile
+
+		# Set up jog modes from config
+		self.jog_modes = self._setup_jog_modes()
+		self.joggable_keys = self._setup_joggable_keys()
+
 		self._set_jog_mode_for_key(SpeedEditorKey.SCRL)
 
 		self.midi_max = 127
@@ -51,12 +43,17 @@ class MidiHandler(SpeedEditorHandler):
 		self.last_jog_value = None
 		self.jog_center = self.midi_center  # MIDI center value
 		self.jog_sensitivity = 50000  # Max value for full range
-		self.jog_deadband = 10  # Deadband around center
+		self.jog_deadband = 20  # Increased deadband for better stability without feedback
 
 		# Double-tap detection for joggable keys
 		self.double_tap_timeout = 500  # milliseconds
 		self.key_tap_times = {}  # Track last tap time for each key
 		self.double_tapped_keys = set()  # Track which keys were double-tapped
+
+		# Parameter state tracking for joggable keys
+		self.parameter_states = {}  # Track current parameter values
+		self.active_jog_key = None  # Currently active joggable key
+		self.jog_accumulator = {}  # Accumulate jog values for smoother control
 
 		# MIDI output setup
 		try:
@@ -69,12 +66,50 @@ class MidiHandler(SpeedEditorHandler):
 				print(f'  - {port}')
 			self.midi_out = None
 
+	def _load_config(self, config_path):
+		"""Load the JSON configuration file."""
+		with open(config_path, 'r') as f:
+			return json.load(f)
+
+	def _setup_jog_modes(self):
+		"""Set up jog modes from configuration."""
+		jog_modes = {}
+		for key_name, mode_config in self.config['jog_modes'].items():
+			key_enum = getattr(SpeedEditorKey, key_name)
+			led_enum = getattr(SpeedEditorJogLed, mode_config['led'])
+			mode_enum = getattr(SpeedEditorJogMode, mode_config['mode'])
+			jog_modes[key_enum] = (led_enum, mode_enum)
+		return jog_modes
+
+	def _setup_joggable_keys(self):
+		"""Set up joggable keys from configuration."""
+		return [getattr(SpeedEditorKey, key_name) for key_name in self.config['joggable_keys']]
+
+	def set_profile(self, profile_name):
+		"""Switch to a different profile."""
+		if profile_name in self.config['profiles']:
+			self.current_profile = profile_name
+			print(f"Switched to profile: {profile_name}")
+		else:
+			print(f"Profile {profile_name} not found")
+
+	def get_key_mapping(self, key_name):
+		"""Get the mapping for a key in the current profile."""
+		profile = self.config['profiles'][self.current_profile]
+		return profile['mappings'].get(key_name, {})
+
+	def reset_jog_accumulator(self, key):
+		"""Reset the jog accumulator for a specific key."""
+		if key in self.joggable_keys:
+			self.jog_accumulator[key] = self.midi_center
+			print(f"Reset jog accumulator for {key.name}")
+
 
 	def _set_jog_mode_for_key(self, key: SpeedEditorKey):
-		if key not in self.JOG:
+		if key not in self.jog_modes:
 			return
-		self.se.set_jog_leds(self.JOG[key][0])
-		self.se.set_jog_mode(self.JOG[key][1])
+		self.se.set_jog_leds(self.jog_modes[key][0])
+		self.se.set_jog_mode(self.jog_modes[key][1])
 
 	def _send_midi(self, msg_type, note_or_cc, velocity=64):
 		if not self.midi_out:
@@ -101,37 +136,49 @@ class MidiHandler(SpeedEditorHandler):
 		if not self.midi_out:
 			return
 
-		key_indices = []
-		for i, key in enumerate(self.JOGGABLE_KEYS):
-			if key in self.keys:
-				key_indices.append(i)
+		# Find currently active joggable key
+		active_joggable_keys = [key for key in self.joggable_keys if key in self.keys]
 
+		if not active_joggable_keys:
+			return
+
+		# Use the first active joggable key (should only be one at a time)
+		current_key = active_joggable_keys[0]
+
+		# If we switched to a different joggable key, reset accumulator
+		if self.active_jog_key != current_key:
+			self.active_jog_key = current_key
+			self.jog_accumulator[current_key] = self.midi_center  # Start at center
+			print(f"Switched to joggable key: {current_key.name}")
 
 		# Handle different jog modes appropriately
 		if mode == SpeedEditorJogMode.ABSOLUTE_DEADZERO:
 			# Absolute mode: map -4096 to +4096 range to 0-127
 			midi_value = max(0, min(self.midi_max, int(self.midi_center + (value / self.midi_center))))
 		elif mode in [SpeedEditorJogMode.RELATIVE_2, SpeedEditorJogMode.RELATIVE_0]:
-			# Relative modes: value is the delta directly
-			# Check deadband first
+			# Relative modes: accumulate the delta
 			if abs(value) < self.jog_deadband:
-				midi_value = self.midi_center  # Stay at center
+				midi_value = self.jog_accumulator.get(current_key, self.midi_center)  # Stay at current position
 			else:
-				normalized_delta = max( -1.0, min( 1.0, (value / self.jog_sensitivity) ) )
-				midi_offset = normalized_delta * self.midi_center
-				midi_value = int(self.midi_center + midi_offset)
-				midi_value = max(0, min(self.midi_max, midi_value))
+				normalized_delta = max(-1.0, min(1.0, (value / self.jog_sensitivity)))
+				midi_offset = normalized_delta * 10  # Smaller steps for smoother control
+				current_value = self.jog_accumulator.get(current_key, self.midi_center)
+				new_value = current_value + midi_offset
+				midi_value = max(0, min(self.midi_max, int(new_value)))
+				self.jog_accumulator[current_key] = midi_value
 		elif mode == SpeedEditorJogMode.ABSOLUTE_CONTINUOUS:
 			# Absolute continuous mode
 			midi_value = max(0, min(self.midi_max, int(self.midi_center + (value / self.midi_center))))
 		else:
-			midi_value = 64  # Center position
+			midi_value = self.jog_accumulator.get(current_key, self.midi_center)  # Stay at current position
+
+		# Find the index of the current key for CC mapping
+		key_index = self.joggable_keys.index(current_key)
 
 		try:
-			for i in key_indices:
-				msg = mido.Message('control_change', channel=0, control=i, value=midi_value)
-				self.midi_out.send(msg)
-				print(f"Jog MIDI value: {midi_value} for key {i}")
+			msg = mido.Message('control_change', channel=0, control=key_index, value=midi_value)
+			self.midi_out.send(msg)
+			print(f"Jog MIDI value: {midi_value} for key {current_key.name} (index {key_index})")
 		except Exception as e:
 			print(f'Jog MIDI error: {e}')
 
@@ -144,7 +191,7 @@ class MidiHandler(SpeedEditorHandler):
 		# Find keys being released and send note off
 		for k in self.keys:
 			if k not in keys and k != SpeedEditorKey.NONE:
-				if k in self.JOGGABLE_KEYS:
+				if k in self.joggable_keys:
 					# Only send note_off if we sent note_on (double tap)
 					if k in self.double_tapped_keys:
 						self._send_midi('note_off', k)
@@ -155,17 +202,36 @@ class MidiHandler(SpeedEditorHandler):
 		# Send note on for newly pressed keys
 		for k in keys:
 			if k != SpeedEditorKey.NONE:
-				if k in self.JOGGABLE_KEYS:
+				# Handle profile switching keys (but still execute their commands)
+				if k == SpeedEditorKey.SOURCE:
+					self.set_profile('library')
+					# Also send the library switch command
+					self._send_midi('note_on', k)
+					continue
+				elif k == SpeedEditorKey.TIMELINE:
+					self.set_profile('edit')
+					# Also send the develop switch command
+					self._send_midi('note_on', k)
+					continue
+
+				# Get key mapping from current profile
+				key_mapping = self.get_key_mapping(k.name)
+
+				if k in self.joggable_keys:
+					# Reset accumulator for this key when pressed
+					self.reset_jog_accumulator(k)
+
 					# Handle double-tap detection for joggable keys
 					current_time = datetime.now().timestamp() * 1000
 
 					if k in self.key_tap_times:
 						time_since_last = current_time - self.key_tap_times[k]
 						if time_since_last <= self.double_tap_timeout:
-							# Double tap detected - send MIDI note
-							self._send_midi('note_on', k)
-							self.double_tapped_keys.add(k)  # Track that this key was double-tapped
-							print(f"Double tap detected for {k.name}")
+							# Double tap detected - send MIDI note if configured
+							if key_mapping.get('double_tap'):
+								self._send_midi('note_on', k)
+								self.double_tapped_keys.add(k)  # Track that this key was double-tapped
+								print(f"Double tap detected for {k.name}")
 						else:
 							# First tap - just record time
 							self.key_tap_times[k] = current_time
@@ -177,12 +243,14 @@ class MidiHandler(SpeedEditorHandler):
 					self.leds |= getattr(SpeedEditorLed, k.name, 0)
 					self.se.set_leds(self.leds)
 				else:
-					self._send_midi('note_on', k)
+					# Send single tap command if configured
+					if key_mapping.get('single_tap'):
+						self._send_midi('note_on', k)
 
 		# Find keys being released and toggle led if there is one
 		for k in self.keys:
 			if k not in keys:
-				if k in self.JOGGABLE_KEYS:
+				if k in self.joggable_keys:
 					# Just turn off LED for joggable keys
 					self.leds &= ~getattr(SpeedEditorLed, k.name, 0)
 					self.se.set_leds(self.leds)

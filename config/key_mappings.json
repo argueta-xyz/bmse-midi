@@ -1,0 +1,201 @@
+{
+  "profiles": {
+    "edit": {
+      "name": "BMSpeedEditor-Edit",
+      "description": "Edit mode with jog wheel support for parameter adjustment",
+      "mappings": {
+        "STOP_PLAY": {
+          "single_tap": "AutoTone",
+          "double_tap": null,
+          "jog": null
+        },
+        "CAM1": {
+          "double_tap": null,
+          "single_tap": "ResetTexture",
+          "jog": "Texture"
+        },
+        "CAM2": {
+          "double_tap": null,
+          "single_tap": "ResetClarity",
+          "jog": "Clarity"
+        },
+        "CAM3": {
+          "double_tap": null,
+          "single_tap": "ResetDehaze",
+          "jog": "Dehaze"
+        },
+        "CAM4": {
+          "double_tap": null,
+          "single_tap": "ResetShadows",
+          "jog": "Shadows"
+        },
+        "CAM5": {
+          "double_tap": null,
+          "single_tap": "ResetWhites",
+          "jog": "Whites"
+        },
+        "CAM6": {
+          "double_tap": null,
+          "single_tap": "ResetBlacks",
+          "jog": "Blacks"
+        },
+        "CAM7": {
+          "double_tap": null,
+          "single_tap": "ResetExposure",
+          "jog": "Exposure"
+        },
+        "CAM8": {
+          "double_tap": null,
+          "single_tap": "ResetContrast",
+          "jog": "Contrast"
+        },
+        "CAM9": {
+          "double_tap": null,
+          "single_tap": "ResetHighlights",
+          "jog": "Highlights"
+        },
+        "SOURCE": {
+          "single_tap": "SwToMlibrary",
+          "double_tap": null,
+          "jog": null
+        },
+        "ROLL": {
+          "single_tap": "Reject",
+          "double_tap": null,
+          "jog": null
+        },
+        "TRIM_OUT": {
+          "single_tap": "RemoveFlag",
+          "double_tap": null,
+          "jog": null
+        },
+        "TRIM_IN": {
+          "single_tap": "Pick",
+          "double_tap": null,
+          "jog": null
+        },
+        "OUT": {
+          "single_tap": "Next",
+          "double_tap": null,
+          "jog": null
+        },
+        "IN": {
+          "single_tap": "Prev",
+          "double_tap": null,
+          "jog": null
+        }
+      }
+    },
+    "library": {
+      "name": "BMSpeedEditor-Library",
+      "description": "Library mode for photo browsing and selection",
+      "mappings": {
+        "PLACE_ON_TOP": {
+          "single_tap": "Key1",
+          "double_tap": null,
+          "jog": null
+        },
+        "SMART_INSRT": {
+          "single_tap": "ShoVwloupe",
+          "double_tap": null,
+          "jog": null
+        },
+        "APPND": {
+          "single_tap": "ShoVwcompare",
+          "double_tap": null,
+          "jog": null
+        },
+        "AUDIO_LEVEL": {
+          "single_tap": "ShoVwcompare",
+          "double_tap": null,
+          "jog": null
+        },
+        "RIPL_OWR": {
+          "single_tap": "ShoVwsurvey",
+          "double_tap": null,
+          "jog": null
+        },
+        "RIPL_DEL": {
+          "single_tap": "ShoFullPreview",
+          "double_tap": null,
+          "jog": null
+        },
+        "FULL_VIEW": {
+          "single_tap": "ToggleZoomOffOn",
+          "double_tap": null,
+          "jog": null
+        },
+        "TRIM_IN": {
+          "single_tap": "Pick",
+          "double_tap": null,
+          "jog": null
+        },
+        "ROLL": {
+          "single_tap": "Reject",
+          "double_tap": null,
+          "jog": null
+        },
+        "TRIM_OUT": {
+          "single_tap": "RemoveFlag",
+          "double_tap": null,
+          "jog": null
+        },
+        "CLOSE_UP": {
+          "single_tap": "Select1Left",
+          "double_tap": null,
+          "jog": null
+        },
+        "SRC_OWR": {
+          "single_tap": "Select1Right",
+          "double_tap": null,
+          "jog": null
+        },
+        "OUT": {
+          "single_tap": "Next",
+          "double_tap": null,
+          "jog": null
+        },
+        "IN": {
+          "single_tap": "Prev",
+          "double_tap": null,
+          "jog": null
+        },
+        "TIMELINE": {
+          "single_tap": "SwToMdevelop",
+          "double_tap": null,
+          "jog": null
+        },
+        "STOP_PLAY": {
+          "single_tap": "AutoTone",
+          "double_tap": null,
+          "jog": null
+        }
+      }
+    }
+  },
+  "jog_modes": {
+    "SHTL": {
+      "led": "SHTL",
+      "mode": "ABSOLUTE_DEADZERO"
+    },
+    "JOG": {
+      "led": "JOG",
+      "mode": "RELATIVE_2"
+    },
+    "SCRL": {
+      "led": "SCRL",
+      "mode": "RELATIVE_2"
+    }
+  },
+  "joggable_keys": [
+    "CAM1",
+    "CAM2",
+    "CAM3",
+    "CAM4",
+    "CAM5",
+    "CAM6",
+    "CAM7",
+    "CAM8",
+    "CAM9"
+  ]
+}

@@ -3,54 +3,57 @@ Blackmagic Speed Editor MIDI Interface
 
 ## Installation
 1. Install MIDI2LR
-1. Edit Controllers.xml (OS dependent location) to set table_data.data.item["output"]["active"] = 0
-1. Set profiles directory to `{REPO}/profiles`
+2. Edit Controllers.xml (OS dependent location) to set table_data.data.item["output"]["active"] = 0
+3. Set profiles directory to `{REPO}/profiles`
 
-## MIDI Controller Mappings
+## Configuration
 
-This document outlines the MIDI mappings for the Blackmagic Speed Editor when used with MIDI2LR. The mappings are divided into two profiles: "Edit" and "Library".
+Key mappings are defined in `config/key_mappings.json` and support multiple profiles with different interaction modes:
 
-### Edit Profile (`BMSpeedEditor-Edit.xml`)
+- **single_tap**: Command executed on single key press
+- **double_tap**: Command executed on double key press (for joggable keys)
+- **jog**: Command executed when turning jog wheel while key is held (for joggable keys)
 
-In this mode, `CAM1` through `CAM9` keys have dual functions. A double-tap will reset the associated parameter, while pressing and holding the key while turning the jog wheel will adjust the parameter.
+### Profiles
 
-| Speed Editor Key | MIDI2LR Command (Press) | MIDI2LR Command (Jog) |
-| :--- | :--- | :--- |
-| `STOP_PLAY` | `AutoTone` | |
-| `CAM9` | `ResetHighlights` | `Highlights` |
-| `CAM8` | `ResetContrast` | `Contrast` |
-| `CAM7` | `ResetExposure` | `Exposure` |
-| `CAM6` | `ResetBlacks` | `Blacks` |
-| `CAM5` | `ResetWhites` | `Whites` |
-| `CAM4` | `ResetShadows` | `Shadows` |
-| `CAM3` | `ResetDehaze` | `Dehaze` |
-| `CAM2` | `ResetClarity` | `Clarity` |
-| `CAM1` | `ResetTexture` | `Texture` |
-| `SOURCE` | `SwToMlibrary` | |
-| `ROLL` | `Reject` | |
-| `TRIM_OUT` | `RemoveFlag` | |
-| `TRIM_IN` | `Pick` | |
-| `OUT` | `Next` | |
-| `IN` | `Prev` | |
+#### Edit Profile
+- **Purpose**: Photo editing with jog wheel support for parameter adjustment
+- **Joggable Keys**: CAM1-CAM9 keys support jog wheel interaction
+- **Double-tap**: Resets the associated parameter
+- **Jog**: Adjusts the parameter while key is held
 
-### Library Profile (`BMSpeedEditor-Library.xml`)
+#### Library Profile
+- **Purpose**: Photo browsing and selection
+- **Interaction**: Simple single-tap commands for navigation
 
-| Speed Editor Key | MIDI2LR Command |
-| :--- | :--- |
-| `PLACE_ON_TOP` | `Ctrl + Shift + D (Select only active)` |
-| `SOURCE` | `SwToMlibrary` |
-| `SMART_INSRT` | `ShoVwloupe` |
-| `APPND` | `ShoVwcompare` |
-| `AUDIO_LEVEL` | `ShoVwcompare` |
-| `RIPL_OWR` | `ShoVwsurvey` |
-| `RIPL_DEL` | `ShoFullPreview` |
-| `FULL_VIEW` | `ToggleZoomOffOn` |
-| `TRIM_IN` | `Pick` |
-| `ROLL` | `Reject` |
-| `TRIM_OUT` | `RemoveFlag` |
-| `CLOSE_UP` | `Select1Left` |
-| `SRC_OWR` | `Select1Right` |
-| `OUT` | `Next` |
-| `IN` | `Prev` |
-| `TIMELINE` | `SwToMdevelop` |
-| `STOP_PLAY` | `AutoTone` |
+### Generating XML Profiles
+
+XML profiles are generated from the JSON configuration:
+
+```bash
+python3 scripts/generate_profiles.py config/key_mappings.json
+```
+
+This creates the XML files in the `profiles/` directory that MIDI2LR can load.
+
+### Customizing Mappings
+
+Edit `config/key_mappings.json` to customize key mappings:
+
+1. Modify existing mappings in the `profiles` section
+2. Add new profiles by creating new profile objects
+3. Update jog modes in the `jog_modes` section
+4. Modify joggable keys in the `joggable_keys` array
+5. Regenerate XML profiles using the script above
+
+### MIDI Controller Mappings
+
+The current mappings are shown in the generated XML files. Key features:
+
+- **CAM1-CAM9**: Dual-function keys in edit mode (single-tap resets, jog adjusts)
+- **Navigation keys**: Standard single-tap commands for photo navigation
+- **Jog wheel**: Supports different modes (absolute, relative) for precise control
+- **Profile switching**:
+  - **SOURCE key**: Switches to library profile + executes `SwToMlibrary` command
+  - **TIMELINE key**: Switches to edit profile + executes `SwToMdevelop` command
+  - Runtime profile switching also supported via `set_profile()` method

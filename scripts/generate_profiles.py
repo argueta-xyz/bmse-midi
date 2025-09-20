@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+
+import xml.etree.ElementTree as ET
+from pathlib import Path
+import sys
+import os
+import json
+
+# Add the parent directory to the path to import bmd
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import importlib.util
+spec = importlib.util.spec_from_file_location("bmd", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "blackmagic-speededitor", "bmd.py"))
+bmd = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(bmd)
+SpeedEditorKey = bmd.SpeedEditorKey
+
+def load_json_config(config_path):
+    """Load the JSON configuration file."""
+    with open(config_path, 'r') as f:
+        return json.load(f)
+
+def create_xml_profile(profile_name, profile_data, joggable_keys):
+    """Create XML profile from JSON data."""
+    root = ET.Element('settings')
+
+    # Add mappings for each key
+    for key_name, mappings in profile_data['mappings'].items():
+        # Convert string key name to SpeedEditorKey enum
+        try:
+            key_enum = getattr(SpeedEditorKey, key_name)
+        except AttributeError:
+            print(f"Warning: Unknown key {key_name}")
+            continue
+
+        # Add single tap mapping
+        if mappings.get('single_tap'):
+            setting = ET.SubElement(root, 'setting')
+            setting.set('channel', '1')
+            setting.set('note', str(key_enum.value))
+            setting.set('command_string', mappings['single_tap'])
+
+        # Add jog wheel mapping (control change)
+        if mappings.get('jog') and key_enum in joggable_keys:
+            cc_number = joggable_keys.index(key_enum)
+            setting = ET.SubElement(root, 'setting')
+            setting.set('channel', '1')
+            setting.set('controller', str(cc_number))
+            setting.set('command_string', mappings['jog'])
+
+    return root
+
+def get_joggable_keys():
+    """Get list of keys that support jog wheel functionality."""
+    return [SpeedEditorKey.CAM1, SpeedEditorKey.CAM2, SpeedEditorKey.CAM3,
+            SpeedEditorKey.CAM4, SpeedEditorKey.CAM5, SpeedEditorKey.CAM6,
+            SpeedEditorKey.CAM7, SpeedEditorKey.CAM8, SpeedEditorKey.CAM9]
+
+def format_xml(element):
+    """Format XML with proper indentation."""
+    rough_string = ET.tostring(element, 'utf-8')
+    reparsed = ET.fromstring(rough_string)
+
+    # Add XML declaration
+    xml_str = '<?xml version="1.0" encoding="UTF-8"?>\n\n'
+
+    # Convert to string and format
+    rough_string = ET.tostring(reparsed, 'utf-8')
+    rough_string = rough_string.decode('utf-8')
+
+    # Simple formatting - add newlines between settings
+    lines = rough_string.split('>')
+    formatted_lines = []
+    for i, line in enumerate(lines):
+        if line.strip():
+            if i < len(lines) - 1:
+                formatted_lines.append(line + '>')
+            else:
+                formatted_lines.append(line)
+
+    return xml_str + '\n'.join(formatted_lines)
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python generate_profiles.py <config_path>")
+        sys.exit(1)
+
+    config_path = sys.argv[1]
+
+    if not os.path.exists(config_path):
+        print(f"Error: Configuration file {config_path} not found")
+        sys.exit(1)
+
+    # Load configuration
+    config = load_json_config(config_path)
+    joggable_keys = get_joggable_keys()
+
+    # Create profiles directory if it doesn't exist
+    profiles_dir = Path('profiles')
+    profiles_dir.mkdir(exist_ok=True)
+
+    # Generate XML files for each profile
+    for profile_key, profile_data in config['profiles'].items():
+        xml_root = create_xml_profile(profile_key, profile_data, joggable_keys)
+        xml_content = format_xml(xml_root)
+
+        # Write to file
+        output_file = profiles_dir / f"{profile_data['name']}.xml"
+        with open(output_file, 'w') as f:
+            f.write(xml_content)
+
+        print(f"Generated {output_file}")
+
+if __name__ == '__main__':
+    main()
