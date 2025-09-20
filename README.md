@@ -25,6 +25,14 @@ powershell -ExecutionPolicy Bypass -File windows/setup_windows_midi.ps1
 2. Open loopMIDI and create a virtual port named "BMSpeedEditor"
 3. In MIDI2LR, set MIDI Input Device to "loopMIDI Port: BMSpeedEditor"
 
+**Troubleshooting**
+If you're having issues with MIDI setup, run the diagnostic tool:
+```cmd
+python windows/diagnose_midi.py
+```
+
+This will check your system and provide specific recommendations.
+
 ### macOS/Linux Setup
 No additional setup required - the script will automatically detect and use available MIDI ports.
 
