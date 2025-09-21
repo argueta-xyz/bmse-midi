@@ -3,6 +3,8 @@
 import os
 import sys
 import json
+import argparse
+import logging
 from datetime import datetime
 from typing import List, Dict, Any
 
@@ -20,8 +22,31 @@ import mido
 import hid
 import platform
 
+def setup_logging(log_level='ERROR'):
+    """Configure logging with the specified level."""
+    logging.basicConfig(
+        level=getattr(logging, log_level),
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    return logging.getLogger(__name__)
+
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description='Speed Editor MIDI Controller')
+    parser.add_argument('--log-level', '-l',
+                       choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                       default='ERROR',
+                       help='Set the logging level (default: ERROR)')
+    parser.add_argument('--config-path',
+                       default='config/key_mappings.json',
+                       help='Path to the key mappings configuration file (default: config/key_mappings.json)')
+    return parser.parse_args()
+
 class MidiHandler(SpeedEditorHandler):
-	def __init__(self, se, config_path='config/key_mappings.json'):
+	def __init__(self, se, config_path):
 		self.se = se
 		self.keys = []
 		self.leds = 0
@@ -69,20 +94,20 @@ class MidiHandler(SpeedEditorHandler):
 					print(f'MIDI output connected to: {midi_out.name}')
 					return midi_out
 			except ImportError:
-				print('Windows MIDI setup module not found, using default MIDI setup')
+				logger.warning('Windows MIDI setup module not found, using default MIDI setup')
 			except Exception as e:
-				print(f'Windows MIDI setup failed: {e}')
-		
+				logger.error(f'Windows MIDI setup failed: {e}')
+
 		# Fallback to standard MIDI setup
 		try:
 			midi_out = mido.open_output()
 			print(f'MIDI output connected to: {midi_out.name}')
 			return midi_out
 		except Exception as e:
-			print(f'Failed to open MIDI output: {e}')
-			print('Available MIDI ports:')
+			logger.error(f'Failed to open MIDI output: {e}')
+			logger.error('Available MIDI ports:')
 			for port in mido.get_output_names():
-				print(f'  - {port}')
+				logger.error(f'  - {port}')
 			return None
 
 	def _load_config(self, config_path):
@@ -105,9 +130,9 @@ class MidiHandler(SpeedEditorHandler):
 		"""Switch to a different profile."""
 		if profile_name in self.config['profiles']:
 			self.current_profile = profile_name
-			print(f"Switched to profile: {profile_name}")
+			logger.info(f"Switched to profile: {profile_name}")
 		else:
-			print(f"Profile {profile_name} not found")
+			logger.error(f"Profile {profile_name} not found")
 
 	def get_key_mapping(self, key_name):
 		"""Get the mapping for a key in the current profile."""
@@ -120,7 +145,7 @@ class MidiHandler(SpeedEditorHandler):
 		key_mapping = self.get_key_mapping(key.name)
 		if key_mapping.get('jog'):
 			self.jog_accumulator[key] = self.midi_center
-			print(f"Reset jog accumulator for {key.name}")
+			logger.debug(f"Reset jog accumulator for {key.name}")
 
 
 	def _set_jog_mode_for_key(self, key: SpeedEditorKey):
@@ -144,12 +169,12 @@ class MidiHandler(SpeedEditorHandler):
 				return
 
 			self.midi_out.send(msg)
-			print(f"MIDI value: {velocity} for key {note_or_cc}")
+			logger.debug(f"MIDI {msg_type}: {velocity} for key {note_or_cc}")
 		except Exception as e:
-			print(f'MIDI send error: {e}')
+			logger.error(f'MIDI send error: {e}')
 
 	def jog(self, mode: SpeedEditorJogMode, value):
-		print(f"Jog mode {mode:d} : {value:d} - keys: {self.keys}")
+		logger.debug(f"Jog mode {mode:d} : {value:d} - keys: {self.keys}")
 
 		if not self.midi_out:
 			return
@@ -171,7 +196,7 @@ class MidiHandler(SpeedEditorHandler):
 		if self.active_jog_key != current_key:
 			self.active_jog_key = current_key
 			self.jog_accumulator[current_key] = self.midi_center  # Start at center
-			print(f"Switched to joggable key: {current_key.name}")
+			logger.debug(f"Switched to joggable key: {current_key.name}")
 
 		# Handle different jog modes appropriately
 		if mode == SpeedEditorJogMode.ABSOLUTE_DEADZERO:
@@ -197,15 +222,15 @@ class MidiHandler(SpeedEditorHandler):
 		try:
 			msg = mido.Message('control_change', channel=0, control=current_key.value, value=midi_value)
 			self.midi_out.send(msg)
-			print(f"Jog MIDI value: {midi_value} for key {current_key.name} (index {current_key.value})")
+			logger.debug(f"Jog MIDI value: {midi_value} for key {current_key.name} (index {current_key.value})")
 		except Exception as e:
-			print(f'Jog MIDI error: {e}')
+			logger.error(f'Jog MIDI error: {e}')
 
 	def key(self, keys: List[SpeedEditorKey]):
 		kl = ', '.join([k.name for k in keys])
 		if not kl:
 			kl = 'None'
-		print(f"Keys held: {kl:s}")
+		logger.debug(f"Keys held: {kl:s}")
 
 		# Find keys being released and send note off
 		for k in self.keys:
@@ -255,7 +280,7 @@ class MidiHandler(SpeedEditorHandler):
 							if key_mapping.get('double_tap'):
 								self._send_midi('note_on', k)
 								self.double_tapped_keys.add(k)  # Track that this key was double-tapped
-								print(f"Double tap detected for {k.name}")
+								logger.debug(f"Double tap detected for {k.name}")
 						else:
 							# First tap - just record time
 							self.key_tap_times[k] = current_time
@@ -295,7 +320,13 @@ class MidiHandler(SpeedEditorHandler):
 
 
 if __name__ == '__main__':
-	print(datetime.now())
+	# Parse command line arguments
+	args = parse_arguments()
+
+	# Set up logging with the specified level
+	logger = setup_logging(args.log_level)
+
+	print(f'Started at {datetime.now()}')
 	print('Speed Editor MIDI Controller')
 	print('Available MIDI ports:')
 	midi_ports = mido.get_output_names()
@@ -303,25 +334,26 @@ if __name__ == '__main__':
 		for port in midi_ports:
 			print(f'  - {port}')
 	else:
-		print('  No MIDI output ports found')
-	print()
+		logger.warning('  No MIDI output ports found')
+	logger.info('')
 
 	se = None
 	try:
+		print('Initializing Speed Editor...')
 		se = SpeedEditor()
 		timeout = se.authenticate()
-		print(f"Speed Editor connected. Timeout: {timeout:d}")
-		se.set_handler(MidiHandler(se))
+		logger.info(f"Speed Editor connected. Timeout: {timeout:d}")
+		se.set_handler(MidiHandler(se, args.config_path))
 
 		print('Speed Editor connected. Press keys to send MIDI...')
 		print('Press Ctrl+C to exit')
 
 		while True:
 			se.poll(timeout=100)  # Add timeout to allow Ctrl+C interruption (100ms)
-	except hid.HIDException as e:
-		print(f'Speed Editor not found: {e}')
-		print('Please connect your BlackMagic Speed Editor and try again.')
-		print('Make sure it\'s connected via USB and not being used by another application.')
+	except Exception as e:
+		logger.error(f'Speed Editor not found: {e}')
+		logger.error('Please connect your BlackMagic Speed Editor and try again.')
+		logger.error('Make sure it\'s connected via USB and not being used by another application.')
 	except KeyboardInterrupt:
 		print('\nExiting...')
 	finally:
