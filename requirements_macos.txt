@@ -1,0 +1,12 @@
+hid==1.0.8
+mido==1.2.10
+packaging==25.0
+pynput==1.7.6
+pyobjc-core==11.1
+pyobjc-framework-ApplicationServices==11.1
+pyobjc-framework-Cocoa==11.1
+pyobjc-framework-CoreText==11.1
+pyobjc-framework-Quartz==11.1
+python-rtmidi==1.5.8
+PyYAML==6.0.2
+six==1.16.0
