@@ -20,7 +20,12 @@ def load_json_config(config_path):
         return json.load(f)
 
 def create_xml_profile(profile_name, profile_data):
-    """Create XML profile from JSON data."""
+    """Create XML profile from JSON data.
+
+    MIDI Channel System:
+    - Single tap: Channel 1 (e.g., CUT = note 15, channel 1)
+    - Double tap: Channel 2 (e.g., CUT = note 15, channel 2)
+    """
     root = ET.Element('settings')
 
     # Add mappings for each key
@@ -41,24 +46,27 @@ def create_xml_profile(profile_name, profile_data):
         if single_tap is not None and jog is not None:
             raise ValueError(f"Key {key_name} has both single_tap and jog mappings. Only one is allowed.")
 
+        # Calculate MIDI note value (same for all types)
+        base_note = key_enum.value
+
         # Add single tap mapping OR jog wheel mapping (exclusive)
         if single_tap:
             setting = ET.SubElement(root, 'setting')
             setting.set('channel', '1')
-            setting.set('note', str(key_enum.value))
+            setting.set('note', str(key_enum.value))  # Single tap: channel 1
             setting.set('command_string', single_tap)
         elif jog:
             # Use the key's enum value as CC number for jog wheel
             setting = ET.SubElement(root, 'setting')
             setting.set('channel', '1')
-            setting.set('controller', str(key_enum.value))
+            setting.set('controller', str(key_enum.value))  # Jog wheel: channel 1
             setting.set('command_string', jog)
 
         # Add double tap mapping if defined (can coexist with jog)
         if double_tap:
             setting = ET.SubElement(root, 'setting')
-            setting.set('channel', '1')
-            setting.set('note', str(key_enum.value))
+            setting.set('channel', '2')
+            setting.set('note', str(base_note))  # Double tap: channel 2
             setting.set('command_string', double_tap)
 
     return root

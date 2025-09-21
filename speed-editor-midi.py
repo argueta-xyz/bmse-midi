@@ -154,22 +154,42 @@ class MidiHandler(SpeedEditorHandler):
 		self.se.set_jog_leds(self.jog_modes[key][0])
 		self.se.set_jog_mode(self.jog_modes[key][1])
 
-	def _send_midi(self, msg_type, note_or_cc, velocity=64):
+	def _send_midi(self, key, msg_type, velocity=64):
+		"""Send MIDI message for a key with the specified message type."""
 		if not self.midi_out:
 			return
 
+		note_value = key.value
+		match msg_type:
+			case 'single_tap':
+				channel = 1
+			case 'double_tap':
+				channel = 2
+			case _:
+				channel = 1
+
 		try:
-			if msg_type == 'note_on':
-				msg = mido.Message('note_on', note=note_or_cc, velocity=velocity)
+			# Map our internal message types to MIDI message types
+			if msg_type in ['single_tap', 'double_tap']:
+				midi_msg_type = 'note_on'
 			elif msg_type == 'note_off':
-				msg = mido.Message('note_off', note=note_or_cc, velocity=velocity)
+				midi_msg_type = 'note_off'
 			elif msg_type == 'control_change':
-				msg = mido.Message('control_change', channel=0, control=note_or_cc, value=velocity)
+				midi_msg_type = 'control_change'
 			else:
+				logger.error(f"Invalid message type: {msg_type}")
 				return
 
+			if midi_msg_type == 'note_on':
+				msg = mido.Message('note_on', note=note_value, velocity=velocity, channel=channel-1)  # mido channels are 0-indexed
+			elif midi_msg_type == 'note_off':
+				msg = mido.Message('note_off', note=note_value, velocity=velocity, channel=channel-1)  # mido channels are 0-indexed
+			elif midi_msg_type == 'control_change':
+				msg = mido.Message('control_change', channel=channel-1, control=note_value, value=velocity)  # mido channels are 0-indexed
+
+
 			self.midi_out.send(msg)
-			logger.debug(f"MIDI {msg_type}: {velocity} for key {note_or_cc}")
+			logger.debug(f"MIDI {midi_msg_type}: {velocity} for key {key.name} (note: {note_value}, channel: {channel})")
 		except Exception as e:
 			logger.error(f'MIDI send error: {e}')
 
@@ -222,7 +242,7 @@ class MidiHandler(SpeedEditorHandler):
 		try:
 			msg = mido.Message('control_change', channel=0, control=current_key.value, value=midi_value)
 			self.midi_out.send(msg)
-			logger.debug(f"Jog MIDI value: {midi_value} for key {current_key.name} (index {current_key.value})")
+			logger.debug(f"Jog MIDI value: {midi_value} for key {current_key.name} (control: {current_key.value})")
 		except Exception as e:
 			logger.error(f'Jog MIDI error: {e}')
 
@@ -241,10 +261,17 @@ class MidiHandler(SpeedEditorHandler):
 				if key_mapping.get('jog'):
 					# Only send note_off if we sent note_on (double tap)
 					if k in self.double_tapped_keys:
-						self._send_midi('note_off', k)
+						self._send_midi(k, 'note_off')  # Send note_off to same channel as double tap
 						self.double_tapped_keys.discard(k)  # Remove from set
 				else:
-					self._send_midi('note_off', k)
+					# For non-jog keys, send note_off to the same channel as the note_on
+					if k in self.double_tapped_keys:
+						# This key was double-tapped, so release should be on double tap channel
+						self._send_midi(k, 'note_off')
+						self.double_tapped_keys.discard(k)  # Remove from set
+					else:
+						# This key was single-tapped (or not tapped at all), so release should be on single tap channel
+						self._send_midi(k, 'note_off')
 
 		# Send note on for newly pressed keys
 		for k in keys:
@@ -253,12 +280,12 @@ class MidiHandler(SpeedEditorHandler):
 				if k == SpeedEditorKey.SOURCE:
 					self.set_profile('library')
 					# Also send the library switch command
-					self._send_midi('note_on', k)
+					self._send_midi(k, 'single_tap')
 					continue
 				elif k == SpeedEditorKey.TIMELINE:
 					self.set_profile('edit')
 					# Also send the develop switch command
-					self._send_midi('note_on', k)
+					self._send_midi(k, 'single_tap')
 					continue
 
 				# Get key mapping from current profile
@@ -269,18 +296,21 @@ class MidiHandler(SpeedEditorHandler):
 				if key_mapping.get('jog'):
 					# Reset accumulator for this key when pressed
 					self.reset_jog_accumulator(k)
+				elif key_mapping.get('single_tap'):
+					# Send single tap command if configured
+					self._send_midi(k, 'single_tap')
 
-					# Handle double-tap detection for joggable keys
+				# Handle double-tap detection for all keys that support it
+				if key_mapping.get('double_tap'):
 					current_time = datetime.now().timestamp() * 1000
 
 					if k in self.key_tap_times:
 						time_since_last = current_time - self.key_tap_times[k]
 						if time_since_last <= self.double_tap_timeout:
-							# Double tap detected - send MIDI note if configured
-							if key_mapping.get('double_tap'):
-								self._send_midi('note_on', k)
-								self.double_tapped_keys.add(k)  # Track that this key was double-tapped
-								logger.debug(f"Double tap detected for {k.name}")
+							# Double tap detected - send MIDI note
+							self._send_midi(k, 'double_tap')
+							self.double_tapped_keys.add(k)  # Track that this key was double-tapped
+							logger.debug(f"Double tap detected for {k.name}")
 						else:
 							# First tap - just record time
 							self.key_tap_times[k] = current_time
@@ -288,13 +318,10 @@ class MidiHandler(SpeedEditorHandler):
 						# First tap - just record time
 						self.key_tap_times[k] = current_time
 
-					# Always turn on LED for joggable keys
+				# Always turn on LED for joggable keys
+				if key_mapping.get('jog'):
 					self.leds |= getattr(SpeedEditorLed, k.name, 0)
 					self.se.set_leds(self.leds)
-				else:
-					# Send single tap command if configured
-					if key_mapping.get('single_tap'):
-						self._send_midi('note_on', k)
 
 		# Find keys being released and toggle led if there is one
 		for k in self.keys:
