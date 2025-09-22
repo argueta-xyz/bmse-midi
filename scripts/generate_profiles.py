@@ -19,6 +19,15 @@ def load_json_config(config_path):
     with open(config_path, 'r') as f:
         return json.load(f)
 
+def _add_setting_element(root, channel, command_string, note=None, controller=None):
+    setting = ET.SubElement(root, 'setting')
+    setting.set('channel', str(channel))
+    if note is not None:
+        setting.set('note', str(note))
+    if controller is not None:
+        setting.set('controller', str(controller))
+    setting.set('command_string', command_string)
+
 def create_xml_profile(profile_name, profile_data):
     """Create XML profile from JSON data.
 
@@ -34,7 +43,7 @@ def create_xml_profile(profile_name, profile_data):
     root = ET.Element('settings')
 
     # Add mappings for each key
-    for key_name, mappings in profile_data['mappings'].items():
+    for key_name, key_config in profile_data['mappings'].items():
         # Convert string key name to SpeedEditorKey enum
         try:
             key_enum = getattr(SpeedEditorKey, key_name)
@@ -42,53 +51,43 @@ def create_xml_profile(profile_name, profile_data):
             print(f"Warning: Unknown key {key_name}")
             continue
 
-        # Validate configuration
-        single_tap = mappings.get('single_tap')
-        double_tap = mappings.get('double_tap')
-        jog = mappings.get('jog')
-        toggle_on = mappings.get('toggle_on')
-        toggle_off = mappings.get('toggle_off')
+        key_type = key_config.get('type')
+        actions = key_config.get('actions', {})
 
-        # Check for invalid configurations
-        if single_tap is not None and jog is not None:
-            raise ValueError(f"Key {key_name} has both single_tap and jog mappings. Only one is allowed.")
+        if not key_type:
+            print(f"Warning: Key {key_name} is missing a 'type' in its configuration. Skipping.")
+            continue
 
-        # Calculate MIDI note value (same for all types)
-        base_note = key_enum.value
+        if key_type == 'SINGLE':
+            command = actions.get('press')
+            if command:
+                _add_setting_element(root, '1', command, note=key_enum.value)
+        elif key_type == 'TOGGLE':
+            toggle_on = actions.get('on')
+            toggle_off = actions.get('off')
+            if toggle_on and toggle_off:
+                # Toggle ON events go on channel 1
+                _add_setting_element(root, '1', toggle_on, note=key_enum.value)
 
-        # Handle toggleable keys (toggle_on/toggle_off)
-        if toggle_on:
-            # Toggle ON events go on channel 1
-            setting = ET.SubElement(root, 'setting')
-            setting.set('channel', '1')
-            setting.set('note', str(base_note))  # Toggle on: channel 1
-            setting.set('command_string', toggle_on)
-
-            # Toggle OFF events go on channel 2
-            setting = ET.SubElement(root, 'setting')
-            setting.set('channel', '2')
-            setting.set('note', str(base_note))  # Toggle off: channel 2
-            setting.set('command_string', toggle_off)
-
-        # Add single tap mapping OR jog wheel mapping (exclusive)
-        elif single_tap:
-            setting = ET.SubElement(root, 'setting')
-            setting.set('channel', '1')
-            setting.set('note', str(key_enum.value))  # Single tap: channel 1
-            setting.set('command_string', single_tap)
-        elif jog:
-            # Use the key's enum value as CC number for jog wheel
-            setting = ET.SubElement(root, 'setting')
-            setting.set('channel', '3')
-            setting.set('controller', str(key_enum.value))  # Jog wheel: channel 3
-            setting.set('command_string', jog)
-
-        # Add double tap mapping if defined (can coexist with jog)
-        if double_tap:
-            setting = ET.SubElement(root, 'setting')
-            setting.set('channel', '2')
-            setting.set('note', str(base_note))  # Double tap: channel 2
-            setting.set('command_string', double_tap)
+                # Toggle OFF events go on channel 2
+                _add_setting_element(root, '2', toggle_off, note=key_enum.value)
+            else:
+                print(f"Warning: Toggle key {key_name} requires both 'on' and 'off' actions. Skipping.")
+        elif key_type == 'JOG':
+            jog_command = actions.get('jog')
+            double_tap = actions.get('double_tap')
+            if jog_command:
+                _add_setting_element(root, '3', jog_command, controller=key_enum.value)
+            if double_tap:
+                _add_setting_element(root, '2', double_tap, note=key_enum.value)
+            if not jog_command and not double_tap:
+                print(f"Warning: Jog key {key_name} requires either a 'jog' or 'double_tap' action. Skipping.")
+        elif key_type == 'PROFILE':
+            command = actions.get('press')
+            if command:
+                _add_setting_element(root, '1', command, note=key_enum.value)
+        else:
+            print(f"Warning: Unknown key type {key_type} for key {key_name}. Skipping.")
 
     return root
 

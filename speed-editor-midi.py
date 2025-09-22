@@ -63,7 +63,8 @@ class MidiHandler(SpeedEditorHandler):
 		self.se.set_leds(self.leds)
 
 		# Load configuration
-		self.config = self._load_config(config_path)
+		with open(config_path, 'r') as f:
+			self.config = json.load(f)
 		self.current_profile = 'edit'  # Default profile
 		self.profile_registries = {}  # Store KeyRegistry for each profile
 		self._initialize_key_registries()
@@ -105,11 +106,6 @@ class MidiHandler(SpeedEditorHandler):
 			for port in mido.get_output_names():
 				logger.error(f'  - {port}')
 			return None
-
-	def _load_config(self, config_path):
-		"""Load the JSON configuration file."""
-		with open(config_path, 'r') as f:
-			return json.load(f)
 
 	def _initialize_key_registries(self):
 		"""Initialize KeyRegistry objects for each profile."""

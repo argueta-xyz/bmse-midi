@@ -71,11 +71,6 @@ class BaseKey(ABC):
         """Handle jog wheel input. Override in jog keys."""
         return []
 
-    @abstractmethod
-    def validate_config(self, config: Dict[str, Any]) -> bool:
-        """Validate that the configuration is valid for this key type."""
-        pass
-
     def reset_state(self):
         """Reset key to initial state."""
         self.is_pressed = False
@@ -115,11 +110,8 @@ class SingleKey(BaseKey):
 
         return midi_msgs, led_updates
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
-        """Single keys should only have single_tap defined."""
-        valid_keys = {'single_tap'}
-        config_keys = {k for k, v in config.items() if v is not None}
-        return config_keys.issubset(valid_keys) and 'single_tap' in config_keys
+    def __repr__(self):
+        return f"{self.__class__.__name__}(name='{self.name}', note={self.midi_note}, command='{self.command}')"
 
 
 class ToggleKey(BaseKey):
@@ -170,11 +162,8 @@ class ToggleKey(BaseKey):
         super().reset_state()
         self.is_toggled_on = False
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
-        """Toggle keys should have toggle_on and toggle_off defined."""
-        valid_keys = {'toggle_on', 'toggle_off'}
-        config_keys = {k for k, v in config.items() if v is not None}
-        return config_keys.issubset(valid_keys) and 'toggle_on' in config_keys
+    def __repr__(self):
+        return f"{self.__class__.__name__}(name='{self.name}', note={self.midi_note}, toggled={self.is_toggled_on})"
 
 
 class JogKey(BaseKey):
@@ -267,11 +256,8 @@ class JogKey(BaseKey):
         super().reset_state()
         self.jog_accumulator = 64
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
-        """Jog keys should have jog defined, optionally double_tap."""
-        valid_keys = {'jog', 'double_tap'}
-        config_keys = {k for k, v in config.items() if v is not None}
-        return config_keys.issubset(valid_keys) and 'jog' in config_keys
+    def __repr__(self):
+        return f"{self.__class__.__name__}(name='{self.name}', note={self.midi_note}, jog_command='{self.jog_command}')"
 
 
 class ProfileKey(BaseKey):
@@ -305,42 +291,47 @@ class ProfileKey(BaseKey):
 
         return midi_msgs, led_updates
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
-        """Profile keys should only have single_tap defined."""
-        valid_keys = {'single_tap'}
-        config_keys = {k for k, v in config.items() if v is not None}
-        return config_keys.issubset(valid_keys) and 'single_tap' in config_keys
+    def __repr__(self):
+        return f"{self.__class__.__name__}(name='{self.name}', note={self.midi_note}, target_profile='{self.target_profile}')"
 
 
 def create_key_from_config(name: str, midi_note: int, led_bit: int, config: Dict[str, Any]) -> BaseKey:
     """Factory function to create the appropriate key type from configuration."""
 
-    # Count non-null configuration entries
-    active_configs = {k: v for k, v in config.items() if v is not None}
+    key_type_str = config.get('type')
+    actions = config.get('actions', {})
 
-    # Determine key type based on configuration
-    if 'toggle_on' in active_configs:
-        # Toggle key
-        toggle_off = active_configs.get('toggle_off', active_configs['toggle_on'])
-        return ToggleKey(name, midi_note, led_bit, active_configs['toggle_on'], toggle_off)
+    if not key_type_str:
+        raise ValueError(f"Key '{name}' is missing a 'type' in its configuration.")
 
-    elif 'jog' in active_configs:
-        # Jog key
-        double_tap = active_configs.get('double_tap')
-        return JogKey(name, midi_note, led_bit, active_configs['jog'], double_tap)
+    try:
+        key_behavior = KeyBehavior(key_type_str.lower())
+    except ValueError:
+        raise ValueError(f"Invalid key type '{key_type_str}' for key '{name}'.")
 
-    elif name in ['SOURCE', 'TIMELINE']:
-        # Profile switching keys
-        target_profile = 'library' if name == 'SOURCE' else 'edit'
-        return ProfileKey(name, midi_note, led_bit, active_configs['single_tap'], target_profile)
-
-    elif 'single_tap' in active_configs:
-        # Single key
-        return SingleKey(name, midi_note, led_bit, active_configs['single_tap'])
-
+    if key_behavior == KeyBehavior.SINGLE:
+        command = actions.get('press', '')
+        return SingleKey(name, midi_note, led_bit, command)
+    elif key_behavior == KeyBehavior.TOGGLE:
+        toggle_on = actions.get('on')
+        toggle_off = actions.get('off', toggle_on) # Default off to on if not provided
+        if not toggle_on:
+            raise ValueError(f"Toggle key '{name}' requires an 'on' action.")
+        return ToggleKey(name, midi_note, led_bit, toggle_on, toggle_off)
+    elif key_behavior == KeyBehavior.JOG:
+        jog_command = actions.get('jog')
+        double_tap_command = actions.get('double_tap')
+        if not jog_command:
+            raise ValueError(f"Jog key '{name}' requires a 'jog' action.")
+        return JogKey(name, midi_note, led_bit, jog_command, double_tap_command)
+    elif key_behavior == KeyBehavior.PROFILE:
+        command = actions.get('press', '')
+        target_profile = config.get('target_profile')
+        if not target_profile:
+            raise ValueError(f"Profile key '{name}' requires a 'target_profile'.")
+        return ProfileKey(name, midi_note, led_bit, command, target_profile)
     else:
-        # Default to single key with no command
-        return SingleKey(name, midi_note, led_bit, "")
+        raise ValueError(f"Unhandled key behavior type: {key_behavior}")
 
 
 class KeyRegistry:
@@ -399,10 +390,6 @@ class KeyRegistry:
                     # LED OFF means set the bit (inverted logic)
                     led_state |= key.led_bit
         return led_state
-
-    def validate_all(self) -> bool:
-        """Validate all keys in the registry."""
-        return all(key.validate_config({}) for key in self.keys.values())
 
     def __iter__(self):
         """Allow iteration over keys."""

@@ -5,93 +5,124 @@
       "description": "Edit mode with jog wheel support for parameter adjustment",
       "mappings": {
         "TIMELINE": {
-          "single_tap": "SwToMdevelop",
-          "double_tap": null,
-          "jog": null
+          "type": "PROFILE",
+          "target_profile": "edit",
+          "actions": {
+            "press": "SwToMdevelop"
+          }
         },
         "STOP_PLAY": {
-          "single_tap": "AutoTone",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "AutoTone"
+          }
         },
         "CAM1": {
-          "single_tap": null,
-          "double_tap": "ResetTexture",
-          "jog": "Texture"
+          "type": "JOG",
+          "actions": {
+            "double_tap": "ResetTexture",
+            "jog": "Texture"
+          }
         },
         "CAM2": {
-          "single_tap": null,
-          "double_tap": "ResetClarity",
-          "jog": "Clarity"
+          "type": "JOG",
+          "actions": {
+            "double_tap": "ResetClarity",
+            "jog": "Clarity"
+          }
         },
         "CAM3": {
-          "single_tap": null,
-          "double_tap": "ResetDehaze",
-          "jog": "Dehaze"
+          "type": "JOG",
+          "actions": {
+            "double_tap": "ResetDehaze",
+            "jog": "Dehaze"
+          }
         },
         "CAM4": {
-          "single_tap": null,
-          "double_tap": "ResetShadows",
-          "jog": "Shadows"
+          "type": "JOG",
+          "actions": {
+            "double_tap": "ResetShadows",
+            "jog": "Shadows"
+          }
         },
         "CAM5": {
-          "single_tap": null,
-          "double_tap": "ResetWhites",
-          "jog": "Whites"
+          "type": "JOG",
+          "actions": {
+            "double_tap": "ResetWhites",
+            "jog": "Whites"
+          }
         },
         "CAM6": {
-          "single_tap": null,
-          "double_tap": "ResetBlacks",
-          "jog": "Blacks"
+          "type": "JOG",
+          "actions": {
+            "double_tap": "ResetBlacks",
+            "jog": "Blacks"
+          }
         },
         "CAM7": {
-          "single_tap": null,
-          "double_tap": "ResetExposure",
-          "jog": "Exposure"
+          "type": "JOG",
+          "actions": {
+            "double_tap": "ResetExposure",
+            "jog": "Exposure"
+          }
         },
         "CAM8": {
-          "single_tap": null,
-          "double_tap": "ResetContrast",
-          "jog": "Contrast"
+          "type": "JOG",
+          "actions": {
+            "double_tap": "ResetContrast",
+            "jog": "Contrast"
+          }
         },
         "CAM9": {
-          "single_tap": null,
-          "double_tap": "ResetHighlights",
-          "jog": "Highlights"
+          "type": "JOG",
+          "actions": {
+            "double_tap": "ResetHighlights",
+            "jog": "Highlights"
+          }
         },
         "SOURCE": {
-          "single_tap": "SwToMlibrary",
-          "double_tap": null,
-          "jog": null
+          "type": "PROFILE",
+          "target_profile": "library",
+          "actions": {
+            "press": "SwToMlibrary"
+          }
         },
         "ROLL": {
-          "single_tap": "Reject",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "Reject"
+          }
         },
         "TRIM_OUT": {
-          "single_tap": "RemoveFlag",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "RemoveFlag"
+          }
         },
         "TRIM_IN": {
-          "single_tap": "Pick",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "Pick"
+          }
         },
         "OUT": {
-          "single_tap": "Next",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "Next"
+          }
         },
         "IN": {
-          "single_tap": "Prev",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "Prev"
+          }
         },
         "CUT": {
-          "toggle_on": "ToggleZoomOffOn",
-          "toggle_off": "ToggleZoomOffOn"
+          "type": "TOGGLE",
+          "actions": {
+            "on": "ToggleZoomOffOn",
+            "off": "ToggleZoomOffOn"
+          }
         }
       }
     },
@@ -100,93 +131,115 @@
       "description": "Library mode for photo browsing and selection",
       "mappings": {
         "PLACE_ON_TOP": {
-          "single_tap": "Key1",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "Key1"
+          }
         },
         "SMART_INSRT": {
-          "single_tap": "ShoVwloupe",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "ShoVwloupe"
+          }
         },
         "APPND": {
-          "single_tap": "ShoVwcompare",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "ShoVwcompare"
+          }
         },
         "AUDIO_LEVEL": {
-          "single_tap": "ShoVwcompare",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "ShoVwcompare"
+          }
         },
         "RIPL_OWR": {
-          "single_tap": "ShoVwsurvey",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "ShoVwsurvey"
+          }
         },
         "RIPL_DEL": {
-          "single_tap": "ShoFullPreview",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "ShoFullPreview"
+          }
         },
         "FULL_VIEW": {
-          "single_tap": "ToggleZoomOffOn",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "ToggleZoomOffOn"
+          }
         },
         "TRIM_IN": {
-          "single_tap": "Pick",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "Pick"
+          }
         },
         "SOURCE": {
-          "single_tap": "SwToMlibrary",
-          "double_tap": null,
-          "jog": null
+          "type": "PROFILE",
+          "target_profile": "library",
+          "actions": {
+            "press": "SwToMlibrary"
+          }
         },
         "ROLL": {
-          "single_tap": "Reject",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "Reject"
+          }
         },
         "TRIM_OUT": {
-          "single_tap": "RemoveFlag",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "RemoveFlag"
+          }
         },
         "CLOSE_UP": {
-          "single_tap": "Select1Left",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "Select1Left"
+          }
         },
         "SRC_OWR": {
-          "single_tap": "Select1Right",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "Select1Right"
+          }
         },
         "OUT": {
-          "single_tap": "Next",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "Next"
+          }
         },
         "IN": {
-          "single_tap": "Prev",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "Prev"
+          }
         },
         "CUT": {
-          "toggle_on": "ToggleZoomOffOn",
-          "toggle_off": "ToggleZoomOffOn"
+          "type": "TOGGLE",
+          "actions": {
+            "on": "ToggleZoomOffOn",
+            "off": "ToggleZoomOffOn"
+          }
         },
         "TIMELINE": {
-          "single_tap": "SwToMdevelop",
-          "double_tap": null,
-          "jog": null
+          "type": "PROFILE",
+          "target_profile": "edit",
+          "actions": {
+            "press": "SwToMdevelop"
+          }
         },
         "STOP_PLAY": {
-          "single_tap": "AutoTone",
-          "double_tap": null,
-          "jog": null
+          "type": "SINGLE",
+          "actions": {
+            "press": "AutoTone"
+          }
         }
       }
     }
