@@ -4,6 +4,11 @@
       "name": "BMSpeedEditor-Edit",
       "description": "Edit mode with jog wheel support for parameter adjustment",
       "mappings": {
+        "TIMELINE": {
+          "single_tap": "SwToMdevelop",
+          "double_tap": null,
+          "jog": null
+        },
         "STOP_PLAY": {
           "single_tap": "AutoTone",
           "double_tap": null,
@@ -83,6 +88,10 @@
           "single_tap": "Prev",
           "double_tap": null,
           "jog": null
+        },
+        "CUT": {
+          "toggle_on": "ToggleZoomOffOn",
+          "toggle_off": "ToggleZoomOffOn"
         }
       }
     },
@@ -130,6 +139,11 @@
           "double_tap": null,
           "jog": null
         },
+        "SOURCE": {
+          "single_tap": "SwToMlibrary",
+          "double_tap": null,
+          "jog": null
+        },
         "ROLL": {
           "single_tap": "Reject",
           "double_tap": null,
@@ -159,6 +173,10 @@
           "single_tap": "Prev",
           "double_tap": null,
           "jog": null
+        },
+        "CUT": {
+          "toggle_on": "ToggleZoomOffOn",
+          "toggle_off": "ToggleZoomOffOn"
         },
         "TIMELINE": {
           "single_tap": "SwToMdevelop",

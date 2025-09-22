@@ -17,6 +17,16 @@ from bmd import (
     SpeedEditorKey,
     SpeedEditorLed,
 )
+from key_types import (
+    BaseKey,
+    SingleKey,
+    ToggleKey,
+    JogKey,
+    ProfileKey,
+    KeyBehavior,
+    KeyRegistry,
+    create_key_from_config
+)
 
 import mido
 import hid
@@ -55,34 +65,16 @@ class MidiHandler(SpeedEditorHandler):
 		# Load configuration
 		self.config = self._load_config(config_path)
 		self.current_profile = 'edit'  # Default profile
+		self.profile_registries = {}  # Store KeyRegistry for each profile
+		self._initialize_key_registries()
 
 		# Set up jog modes from config
 		self.jog_modes = self._setup_jog_modes()
 
 		self._set_jog_mode_for_key(SpeedEditorKey.SHTL)
 
-		self.midi_max = 127
-		self.midi_center = 64
-
-		# Jog wheel state tracking
-		self.last_jog_value = None
-		self.jog_center = self.midi_center  # MIDI center value
-		self.jog_sensitivity = 50000  # Max value for full range
-		self.jog_deadband = 20  # Increased deadband for better stability without feedback
-
-		# Double-tap detection for joggable keys
-		self.double_tap_timeout = 500  # milliseconds
-		self.key_tap_times = {}  # Track last tap time for each key
-		self.double_tapped_keys = set()  # Track which keys were double-tapped
-
-		# Toggleable key tracking
-		self.profile_toggle_states = {}  # Per-profile toggle states
-		self.toggleable_keys = set()  # Track which keys are currently toggled on in current profile
-
-		# Parameter state tracking for joggable keys
-		self.parameter_states = {}  # Track current parameter values
-		self.active_jog_key = None  # Currently active joggable key
-		self.jog_accumulator = {}  # Accumulate jog values for smoother control
+		# Legacy jog state tracking - no longer needed with stateful keys
+		# All jog state is now managed by individual JogKey objects
 
 		# MIDI output setup
 		self.midi_out = self._setup_midi_output()
@@ -119,6 +111,35 @@ class MidiHandler(SpeedEditorHandler):
 		with open(config_path, 'r') as f:
 			return json.load(f)
 
+	def _initialize_key_registries(self):
+		"""Initialize KeyRegistry objects for each profile."""
+		for profile_name, profile_data in self.config['profiles'].items():
+			registry = KeyRegistry()
+
+			for key_name, key_config in profile_data['mappings'].items():
+				try:
+					# Get the MIDI note value from the SpeedEditorKey enum
+					key_enum = getattr(SpeedEditorKey, key_name)
+					midi_note = key_enum.value
+
+					# Get LED bit for this key
+					try:
+						led_enum = getattr(SpeedEditorLed, key_name)
+						led_bit = led_enum.value
+					except AttributeError:
+						led_bit = 0  # No LED for this key
+
+					# Create the appropriate key object
+					key_obj = create_key_from_config(key_name, midi_note, led_bit, key_config)
+					registry.add_key(key_obj)
+
+				except AttributeError:
+					logger.warning(f"Unknown key name: {key_name}")
+					continue
+
+			self.profile_registries[profile_name] = registry
+			logger.debug(f"Initialized {len(registry)} keys for profile '{profile_name}'")
+
 	def _setup_jog_modes(self):
 		"""Set up jog modes from configuration."""
 		jog_modes = {}
@@ -133,150 +154,89 @@ class MidiHandler(SpeedEditorHandler):
 	def set_profile(self, profile_name):
 		"""Switch to a different profile."""
 		if profile_name in self.config['profiles']:
-			# Save current profile's toggle state
-			if self.current_profile:
-				self.profile_toggle_states[self.current_profile] = self.toggleable_keys.copy()
-
-			# Switch to new profile
 			self.current_profile = profile_name
 
-			# Restore new profile's toggle state
-			if profile_name in self.profile_toggle_states:
-				self.toggleable_keys = self.profile_toggle_states[profile_name].copy()
-			else:
-				self.toggleable_keys = set()  # New profile starts with no toggles
-
-			# Update LEDs to match the restored toggle state
-			self._update_leds_for_profile()
+			# Update LEDs to match the new profile's key states
+			registry = self.profile_registries.get(profile_name)
+			if registry:
+				self._sync_leds_with_registry(registry)
 
 			logger.info(f"Switched to profile: {profile_name}")
 		else:
 			logger.error(f"Profile {profile_name} not found")
 
-	def _update_leds_for_profile(self):
-		"""Update LEDs to match the current profile's toggle state."""
-		# Get all toggleable keys in the current profile
-		profile = self.config['profiles'][self.current_profile]
-		toggleable_keys_in_profile = []
-
-		for key_name, mapping in profile['mappings'].items():
-			if mapping.get('toggle_on'):
-				try:
-					key_enum = getattr(SpeedEditorKey, key_name)
-					toggleable_keys_in_profile.append(key_enum)
-				except AttributeError:
-					continue
-
-		# Update LEDs for all toggleable keys in this profile
-		for key_enum in toggleable_keys_in_profile:
-			led_bit = getattr(SpeedEditorLed, key_enum.name, 0)
-			if key_enum in self.toggleable_keys:
-				# Key is toggled ON - turn LED ON (inverted: clear bit)
-				self.leds &= ~led_bit
-			else:
-				# Key is toggled OFF - turn LED OFF (inverted: set bit)
-				self.leds |= led_bit
-
-		# Apply the LED changes
+	def _sync_leds_with_registry(self, registry):
+		"""Sync LEDs with the current state of keys in the registry."""
+		# Get current LED state from all keys in the registry
+		led_state = registry.get_current_led_state()
+		self.leds = led_state
 		self.se.set_leds(self.leds)
-		logger.debug(f"Updated LEDs for profile {self.current_profile}: toggleable keys ON = {[k.name for k in self.toggleable_keys]}")
+		logger.debug(f"Synced LEDs with registry for profile {self.current_profile}")
 
 	def send_startup_profile_message(self):
 		"""Send MIDI message for the startup profile to sync external software."""
+		registry = self.profile_registries.get(self.current_profile)
+		if not registry:
+			logger.error(f"No registry found for profile: {self.current_profile}")
+			return
+
 		if self.current_profile == 'edit':
 			# Send TIMELINE key press to switch to edit profile
-			timeline_key = SpeedEditorKey.TIMELINE
-			self._send_midi(timeline_key, 'single_tap')
+			midi_msgs, led_updates = registry.handle_key_press('TIMELINE')
+			self._process_midi_messages(midi_msgs)
+			self._process_led_updates(led_updates)
+			# Send release too
+			midi_msgs, led_updates = registry.handle_key_release('TIMELINE')
+			self._process_midi_messages(midi_msgs)
+			self._process_led_updates(led_updates)
 			logger.info(f"Sent startup profile message for: {self.current_profile}")
 		elif self.current_profile == 'library':
 			# Send SOURCE key press to switch to library profile
-			source_key = SpeedEditorKey.SOURCE
-			self._send_midi(source_key, 'single_tap')
+			midi_msgs, led_updates = registry.handle_key_press('SOURCE')
+			self._process_midi_messages(midi_msgs)
+			self._process_led_updates(led_updates)
+			# Send release too
+			midi_msgs, led_updates = registry.handle_key_release('SOURCE')
+			self._process_midi_messages(midi_msgs)
+			self._process_led_updates(led_updates)
 			logger.info(f"Sent startup profile message for: {self.current_profile}")
 		else:
 			logger.warning(f"No startup message defined for profile: {self.current_profile}")
 
+	def get_key(self, key_name: str) -> BaseKey:
+		"""Get the key object for a key in the current profile."""
+		registry = self.profile_registries.get(self.current_profile)
+		if registry:
+			return registry.get_key(key_name)
+		return None
+
 	def get_key_mapping(self, key_name):
-		"""Get the mapping for a key in the current profile."""
+		"""Get the mapping for a key in the current profile (legacy method)."""
 		profile = self.config['profiles'][self.current_profile]
 		return profile['mappings'].get(key_name, {})
 
-	def reset_jog_accumulator(self, key):
-		"""Reset the jog accumulator for a specific key."""
-		# Check if key has jog mapping in current profile
-		key_mapping = self.get_key_mapping(key.name)
-		if key_mapping.get('jog'):
-			self.jog_accumulator[key] = self.midi_center
-			logger.debug(f"Reset jog accumulator for {key.name}")
-
-
 	def _set_jog_mode_for_key(self, key: SpeedEditorKey):
+		"""Set jog mode for a key (still needed for hardware setup)."""
 		if key not in self.jog_modes:
 			return
 		self.se.set_jog_leds(self.jog_modes[key][0])
 		self.se.set_jog_mode(self.jog_modes[key][1])
 
-	def _send_midi(self, key, msg_type, velocity=64):
-		"""Send MIDI message for a key with the specified message type."""
-		if not self.midi_out:
-			return
-
-		note_value = key.value
-		match msg_type:
-			case 'single_tap':
-				channel = 1
-			case 'double_tap':
-				channel = 2
-			case _:
-				channel = 1
-
-		try:
-			# Map our internal message types to MIDI message types
-			if msg_type in ['single_tap', 'double_tap']:
-				midi_msg_type = 'note_on'
-			elif msg_type == 'note_off':
-				midi_msg_type = 'note_off'
-			elif msg_type == 'control_change':
-				midi_msg_type = 'control_change'
-			else:
-				logger.error(f"Invalid message type: {msg_type}")
-				return
-
-			# Special handling for note_off: use the same channel as the corresponding note_on
-			if midi_msg_type == 'note_off':
-				# Check if this key was double-tapped (should use channel 2)
-				if hasattr(self, 'double_tapped_keys') and key in self.double_tapped_keys:
-					actual_channel = 2  # Channel 2 for double-tapped keys
-					self.double_tapped_keys.discard(key)  # Remove from double-tapped set
-				else:
-					actual_channel = 1  # Channel 1 for single-tapped keys
-			else:
-				actual_channel = channel
-
-			# Send the MIDI message
-			if midi_msg_type == 'note_on':
-				msg = mido.Message('note_on', note=note_value, velocity=velocity, channel=actual_channel-1)  # mido channels are 0-indexed
-			elif midi_msg_type == 'note_off':
-				msg = mido.Message('note_off', note=note_value, velocity=velocity, channel=actual_channel-1)  # mido channels are 0-indexed
-			elif midi_msg_type == 'control_change':
-				msg = mido.Message('control_change', channel=actual_channel-1, control=note_value, value=velocity)  # mido channels are 0-indexed
-
-			self.midi_out.send(msg)
-			logger.debug(f"MIDI {midi_msg_type}: {velocity} for key {key.name} (note: {note_value}, channel: {actual_channel})")
-		except Exception as e:
-			logger.error(f'MIDI send error: {e}')
+	# Legacy MIDI methods removed - now using _process_midi_messages()
 
 	def jog(self, mode: SpeedEditorJogMode, value):
 		logger.debug(f"Jog mode {mode:d} : {value:d} - keys: {self.keys}")
 
-		if not self.midi_out:
+		# Get current profile registry
+		registry = self.profile_registries.get(self.current_profile)
+		if not registry:
 			return
 
-		# Find currently active keys with jog mapping
+		# Find currently active keys with jog capability
 		active_joggable_keys = []
 		for key in self.keys:
-			key_mapping = self.get_key_mapping(key.name)
-			if key_mapping.get('jog'):
+			key_obj = registry.get_key(key.name)
+			if key_obj and key_obj.behavior == KeyBehavior.JOG:
 				active_joggable_keys.append(key)
 
 		if not active_joggable_keys:
@@ -285,40 +245,9 @@ class MidiHandler(SpeedEditorHandler):
 		# Use the first active joggable key (should only be one at a time)
 		current_key = active_joggable_keys[0]
 
-		# If we switched to a different joggable key, reset accumulator
-		if self.active_jog_key != current_key:
-			self.active_jog_key = current_key
-			self.jog_accumulator[current_key] = self.midi_center  # Start at center
-			logger.debug(f"Switched to joggable key: {current_key.name}")
-
-		# Handle different jog modes appropriately
-		if mode == SpeedEditorJogMode.ABSOLUTE_DEADZERO:
-			# Absolute mode: map -4096 to +4096 range to 0-127
-			midi_value = max(0, min(self.midi_max, int(self.midi_center + (value / self.midi_center))))
-		elif mode in [SpeedEditorJogMode.RELATIVE_2, SpeedEditorJogMode.RELATIVE_0]:
-			# Relative modes: accumulate the delta
-			if abs(value) < self.jog_deadband:
-				midi_value = self.jog_accumulator.get(current_key, self.midi_center)  # Stay at current position
-			else:
-				normalized_delta = max(-1.0, min(1.0, (value / self.jog_sensitivity)))
-				midi_offset = normalized_delta * 10  # Smaller steps for smoother control
-				current_value = self.jog_accumulator.get(current_key, self.midi_center)
-				new_value = current_value + midi_offset
-				midi_value = max(0, min(self.midi_max, int(new_value)))
-				self.jog_accumulator[current_key] = midi_value
-		elif mode == SpeedEditorJogMode.ABSOLUTE_CONTINUOUS:
-			# Absolute continuous mode
-			midi_value = max(0, min(self.midi_max, int(self.midi_center + (value / self.midi_center))))
-		else:
-			midi_value = self.jog_accumulator.get(current_key, self.midi_center)  # Stay at current position
-
-		try:
-			# Jog wheel uses channel 3 (0-indexed = 2)
-			msg = mido.Message('control_change', channel=2, control=current_key.value, value=midi_value)
-			self.midi_out.send(msg)
-			logger.debug(f"Jog MIDI value: {midi_value} for key {current_key.name} (control: {current_key.value}, channel: 3)")
-		except Exception as e:
-			logger.error(f'Jog MIDI error: {e}')
+		# Handle jog input through the key object
+		midi_msgs = registry.handle_jog(current_key.name, value, mode)
+		self._process_midi_messages(midi_msgs)
 
 	def key(self, keys: List[SpeedEditorKey]):
 		kl = ', '.join([k.name for k in keys])
@@ -326,129 +255,82 @@ class MidiHandler(SpeedEditorHandler):
 			kl = 'None'
 		logger.debug(f"Keys held: {kl:s}")
 
-		# Find keys being released and send note off
+		# Get current profile registry
+		registry = self.profile_registries.get(self.current_profile)
+		if not registry:
+			logger.error(f"No registry found for profile: {self.current_profile}")
+			return
+
+		# Find keys being released
 		for k in self.keys:
 			if k not in keys and k != SpeedEditorKey.NONE:
-				# Check key mapping for release behavior
-				key_mapping = self.get_key_mapping(k.name)
+				midi_msgs, led_updates = registry.handle_key_release(k.name)
+				self._process_midi_messages(midi_msgs)
+				self._process_led_updates(led_updates)
 
-				if key_mapping.get('jog'):
-					# Only send note_off if we sent note_on (double tap)
-					if k in self.double_tapped_keys:
-						self._send_midi(k, 'note_off')  # Send note_off to same channel as double tap
-						self.double_tapped_keys.discard(k)  # Remove from set
-				elif key_mapping.get('toggle_on'):
-					# Toggleable keys: send note_off on the same channel as the note_on
-					# The double_tapped_keys logic will automatically select the correct channel
-					if k in self.double_tapped_keys:
-						# This key was pressed on channel 2 (toggle off)
-						self._send_midi(k, 'note_off')  # Will use channel 2
-						self.double_tapped_keys.discard(k)  # Remove from set
-					else:
-						# This key was pressed on channel 1 (toggle on)
-						self._send_midi(k, 'note_off')  # Will use channel 1
-				else:
-					# For non-jog, non-toggleable keys, send note_off to the same channel as the note_on
-					if k in self.double_tapped_keys:
-						# This key was double-tapped, so release should be on double tap channel
-						self._send_midi(k, 'note_off')
-						self.double_tapped_keys.discard(k)  # Remove from set
-					else:
-						# This key was single-tapped (or not tapped at all), so release should be on single tap channel
-						self._send_midi(k, 'note_off')
-
-		# Send note on for newly pressed keys
+		# Handle newly pressed keys
 		for k in keys:
 			if k != SpeedEditorKey.NONE and k not in self.keys:
 				logger.debug(f"Processing newly pressed key: {k.name}")
-				# Handle profile switching keys (but still execute their commands)
+
+				# Handle profile switching keys specially
 				if k == SpeedEditorKey.SOURCE:
-					self._send_midi(k, 'single_tap')
+					midi_msgs, led_updates = registry.handle_key_press(k.name)
+					self._process_midi_messages(midi_msgs)
+					self._process_led_updates(led_updates)
 					self.set_profile('library')
 					continue
 				elif k == SpeedEditorKey.TIMELINE:
-					self._send_midi(k, 'single_tap')
+					midi_msgs, led_updates = registry.handle_key_press(k.name)
+					self._process_midi_messages(midi_msgs)
+					self._process_led_updates(led_updates)
 					self.set_profile('edit')
 					continue
 
-				# Get key mapping from current profile
-				key_mapping = self.get_key_mapping(k.name)
-				logger.debug(f"Key {k.name} mapping: {key_mapping} (profile: {self.current_profile})")
+				# Handle all other keys through the registry
+				midi_msgs, led_updates = registry.handle_key_press(k.name)
+				self._process_midi_messages(midi_msgs)
+				self._process_led_updates(led_updates)
 
-				# Check if key is toggleable
-				if key_mapping.get('toggle_on'):
-					logger.debug(f"Key {k.name} is toggleable")
-					# Toggleable key - check current state and toggle
-					if k in self.toggleable_keys:
-						# Currently ON, so toggle OFF - send note_on on channel 2
-						logger.debug(f"Sending toggle OFF for {k.name}")
-						self._send_midi(k, 'double_tap')  # note_on on channel 2
-						self.double_tapped_keys.add(k)  # Track that this press is on channel 2
-						self.toggleable_keys.discard(k)  # Remove from toggled set
-						# Turn off LED when toggling OFF (inverted: set bit to turn OFF)
-						self.leds |= getattr(SpeedEditorLed, k.name, 0)
-						self.se.set_leds(self.leds)
-						logger.debug(f"Toggle off for {k.name}")
-					else:
-						# Currently OFF, so toggle ON - send note_on on channel 1
-						logger.debug(f"Sending toggle ON for {k.name}")
-						self._send_midi(k, 'single_tap')  # note_on on channel 1
-						# Don't add to double_tapped_keys, so release will be on channel 1
-						self.toggleable_keys.add(k)  # Track as toggled on
-						# Turn on LED when toggling ON (inverted: clear bit to turn ON)
-						self.leds &= ~getattr(SpeedEditorLed, k.name, 0)
-						self.se.set_leds(self.leds)
-						logger.debug(f"Toggle on for {k.name}")
-				else:
-					# Check if key has jog mapping
-					if key_mapping.get('jog'):
-						# Reset accumulator for this key when pressed
-						self.reset_jog_accumulator(k)
-					elif key_mapping.get('single_tap'):
-						# Send single tap command if configured
-						self._send_midi(k, 'single_tap')
-
-					# Handle double-tap detection for all keys that support it
-					if key_mapping.get('double_tap'):
-						current_time = datetime.now().timestamp() * 1000
-
-						if k in self.key_tap_times:
-							time_since_last = current_time - self.key_tap_times[k]
-							if time_since_last <= self.double_tap_timeout:
-								# Double tap detected - send MIDI note
-								self._send_midi(k, 'double_tap')
-								self.double_tapped_keys.add(k)  # Track that this key was double-tapped
-								logger.debug(f"Double tap detected for {k.name}")
-							else:
-								# First tap - just record time
-								self.key_tap_times[k] = current_time
-						else:
-							# First tap - just record time
-							self.key_tap_times[k] = current_time
-
-					# Always turn on LED for joggable keys
-					if key_mapping.get('jog'):
-						self.leds |= getattr(SpeedEditorLed, k.name, 0)
-						self.se.set_leds(self.leds)
-
-		# Find keys being released and toggle led if there is one
-		for k in self.keys:
-			if k not in keys:
-				# Check if key has jog mapping
-				key_mapping = self.get_key_mapping(k.name)
-				if key_mapping.get('jog'):
-					# Just turn off LED for joggable keys
-					self.leds &= ~getattr(SpeedEditorLed, k.name, 0)
-					self.se.set_leds(self.leds)
-				else:
-					# Select jog mode
-					self._set_jog_mode_for_key(k)
-
-					# Toggle leds
-					self.leds ^= getattr(SpeedEditorLed, k.name, 0)
-					self.se.set_leds(self.leds)
-
+		# Update the current keys list
 		self.keys = keys
+
+	def _process_midi_messages(self, midi_msgs: List):
+		"""Process a list of MidiMessage objects."""
+		if not self.midi_out:
+			return
+
+		for midi_msg in midi_msgs:
+			try:
+				if midi_msg.msg_type == 'note_on':
+					msg = mido.Message('note_on', note=midi_msg.note, velocity=midi_msg.velocity, channel=midi_msg.channel-1)
+				elif midi_msg.msg_type == 'note_off':
+					msg = mido.Message('note_off', note=midi_msg.note, velocity=midi_msg.velocity, channel=midi_msg.channel-1)
+				elif midi_msg.msg_type == 'control_change':
+					msg = mido.Message('control_change', channel=midi_msg.channel-1, control=midi_msg.note, value=midi_msg.velocity)
+				else:
+					logger.error(f"Unknown MIDI message type: {midi_msg.msg_type}")
+					continue
+
+				self.midi_out.send(msg)
+				logger.debug(f"MIDI {midi_msg.msg_type}: {midi_msg.velocity} (note: {midi_msg.note}, channel: {midi_msg.channel})")
+			except Exception as e:
+				logger.error(f'MIDI send error: {e}')
+
+	def _process_led_updates(self, led_updates: List):
+		"""Process a list of LedUpdate objects."""
+		for led_update in led_updates:
+			if led_update.state:
+				# LED ON: set bit (normal logic - we had this backwards!)
+				self.leds |= led_update.led_bit
+			else:
+				# LED OFF: clear bit (normal logic - we had this backwards!)
+				self.leds &= ~led_update.led_bit
+
+		# Apply LED changes if any updates were made
+		if led_updates:
+			self.se.set_leds(self.leds)
+			logger.debug(f"Updated LEDs: {[f'bit {l.led_bit} {"ON" if l.state else "OFF"}' for l in led_updates]}")
 
 	def battery(self, charging: bool, level: int):
 		print(f"Battery {level:d} %{' and charging' if charging else '':s}")
