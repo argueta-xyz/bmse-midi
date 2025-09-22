@@ -1,139 +1,143 @@
-# bmse-midi
-Blackmagic Speed Editor MIDI Interface
+# bmse-midi: Blackmagic Speed Editor MIDI Interface
+
+This project allows you to use your Blackmagic Design Speed Editor as a customizable MIDI controller, primarily designed for integration with applications like Adobe Lightroom Classic via MIDI2LR.
+
+## Features
+
+*   **Customizable Key Mappings**: Define MIDI messages for each Speed Editor key in `config/key_mappings.json`.
+*   **Multiple Profiles**: Switch between different key mapping profiles (e.g., 'Edit' and 'Library') for various workflows.
+*   **Jog Wheel Support**: Configurable jog wheel behavior with different modes (shuttle, jog, scroll) and sensitivity.
+*   **LED Feedback**: Visual feedback on the Speed Editor's LEDs based on key states and jog modes.
+*   **Cross-Platform**: Supports Windows, macOS, and Linux.
 
 ## Installation
 
 ### Prerequisites
-1. Install MIDI2LR
-2. Edit Controllers.xml (OS dependent location) to set table_data.data.item["output"]["active"] = 0
-3. Set profiles directory to `{REPO}/profiles`
 
-### Windows Setup
-Windows requires a virtual MIDI port to connect the Speed Editor to MIDI2LR:
+*   **Python 3.x**: Ensure you have Python 3 installed on your system.
+*   **MIDI2LR (Optional)**: If you intend to use this with Adobe Lightroom Classic, download and install [MIDI2LR](https://github.com/rsjaffe/MIDI2LR).
 
-**Option 1: Automated Setup (Recommended)**
-```cmd
-# Run the batch script
-windows/setup_windows_midi.bat
+### 1. Clone the Repository and Initialize Submodules
 
-# Or run the PowerShell script
-powershell -ExecutionPolicy Bypass -File windows/setup_windows_midi.ps1
-```
+First, clone this repository and initialize the `blackmagic-speededitor` submodule:
 
-**Option 2: Manual Setup**
-1. Download and install [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html)
-2. Open loopMIDI and create a virtual port named "BMSpeedEditor"
-3. In MIDI2LR, set MIDI Input Device to "loopMIDI Port: BMSpeedEditor"
-
-**Troubleshooting**
-If you're having issues with MIDI setup, run the diagnostic tool:
-```cmd
-python windows/diagnose_midi.py
-```
-
-This will check your system and provide specific recommendations.
-
-### macOS/Linux Setup
-No additional setup required - the script will automatically detect and use available MIDI ports.
-
-## Running the Script
-
-### Windows
-```cmd
-# Activate virtual environment (if using one)
-.venv\Scripts\activate
-
-# Run the MIDI controller
-python speed-editor-midi.py
-```
-
-### macOS/Linux
 ```bash
-# Activate virtual environment (if using one)
-source .venv/bin/activate
+git clone https://github.com/user/bmse-midi.git
+cd bmse-midi
+git submodule update --init --recursive
+```
 
-# Run the MIDI controller
-python3 speed-editor-midi.py
+### 2. Create and Activate Python Virtual Environment
+
+It's recommended to use a Python virtual environment to manage dependencies.
+
+From the project root:
+
+```bash
+# Create virtual environment
+(bmse-midi)$ python -m venv venv
+
+# Activate virtual environment
+# Windows PowerShell
+(bmse-midi)$ .\venv\Scripts\activate
+
+# macOS/Linux
+(bmse-midi)$ source venv/bin/activate
+```
+
+### 3. Install Python Dependencies
+
+Install the required Python packages for your operating system within the activated virtual environment. For Windows-specific considerations regarding Python dependencies (e.g., C++ compiler and `hidapi.dll`), please refer to `windows/README.md`.
+
+From the project root:
+
+```bash
+# For Windows
+(bmse-midi)$ pip install -r requirements_windows.txt
+
+# For macOS/Linux
+(bmse-midi)$ pip install -r requirements_macos.txt
+```
+
+### 4. Virtual MIDI Port Setup (Windows Only)
+
+Windows requires a virtual MIDI port to connect the Speed Editor to MIDI2LR. Please refer to the detailed instructions in `windows/README.md` for setting up `loopMIDI` or an alternative.
+
+### 5. MIDI2LR Configuration (Optional)
+
+If you are using MIDI2LR, you can import the provided configuration file:
+
+1.  Open MIDI2LR.
+2.  Go to `File > Import Configuration...`.
+3.  Navigate to the `config` directory in your project and select `bmse-midi2lr-windows.txt` (for Windows) or `bmse-midi2lr.txt` (for macOS/Linux).
+4.  Click `Open`.
+
+## Running the MIDI Controller
+
+After completing the setup, you can run the main MIDI controller script.
+
+From the project root (with your virtual environment activated):
+
+```bash
+(bmse-midi)$ python src/speed_editor_midi.py
 ```
 
 The script will automatically:
-- Detect your Speed Editor
-- Set up appropriate MIDI ports (including virtual ports on Windows)
-- Load the configured key mappings
-- Start listening for key presses and jog wheel movements
+*   Detect your Speed Editor.
+*   Set up appropriate MIDI ports (referencing your virtual port on Windows).
+*   Load the configured key mappings from `config/key_mappings.json`.
+*   Start listening for key presses and jog wheel movements.
+
+## Configuration
+
+Key mappings and jog wheel behaviors are defined in `config/key_mappings.json`. This file supports multiple profiles.
+
+### Structure of `key_mappings.json`
+
+The configuration defines profiles, each containing mappings for Speed Editor keys. Keys can have different behaviors:
+
+*   `SINGLE`: Executes a command on a single press.
+*   `TOGGLE`: Toggles a state (e.g., LED on/off) and sends different commands for 'on' and 'off' transitions.
+*   `JOG`: Activates jog wheel control when held, and can also have a 'double_tap' action.
+*   `PROFILE`: Switches to a different profile.
+
+### Customizing Mappings & Generating XML Profiles for MIDI2LR
+
+The XML profiles that MIDI2LR consumes are generated from `config/key_mappings.json`.
+
+They should never be updated by hand, just edit the JSON and run:
+
+```bash
+(bmse-midi)$ python src/generate_profiles.py
+```
+
+You will need to either restart MIDI2LR or just swap profiles.
+
 
 ## Project Structure
 
 ```
 bmse-midi/
-├── blackmagic-speededitor/     # BlackMagic Speed Editor Python library
-├── config/                     # Configuration files
-│   ├── key_mappings.json      # Key mapping definitions
-│   └── bmse-midi2lr.txt       # MIDI2LR configuration
-├── profiles/                   # Generated XML profiles for MIDI2LR
-│   ├── BMSpeedEditor-Edit.xml
-│   └── BMSpeedEditor-Library.xml
-├── scripts/                    # Utility scripts
-│   └── generate_profiles.py   # Generate XML from JSON config
-├── windows/                    # Windows-specific files
-│   ├── midi_setup.py          # Windows MIDI port setup
-│   ├── setup_windows_midi.bat # Windows setup script (batch)
-│   ├── setup_windows_midi.ps1 # Windows setup script (PowerShell)
-│   └── install_windows_dependencies.ps1 # Dependency installer
-├── speed-editor-midi.py       # Main MIDI controller script
-├── requirements.txt           # Python dependencies
-└── README.md                  # This file
+├── config/
+│   ├── bmse-midi2lr-windows.txt
+│   ├── bmse-midi2lr.txt
+│   ├── key_mappings.json
+│   ├── profiles/
+│   │   ├── BMSpeedEditor-Edit.xml
+│   │   └── BMSpeedEditor-Library.xml
+├── external/
+│   └── blackmagic-speededitor/  # Blackmagic Speed Editor Python library (Git submodule)
+├── requirements_macos.txt
+├── requirements_windows.txt
+├── src/
+│   ├── generate_profiles.py     # Script to generate XML profiles
+│   ├── key_types.py             # Defines key behavior and types
+│   └── speed_editor_midi.py     # Main MIDI controller script
+├── tests/
+│   ├── dummy_speed_editor.py    # Dummy Speed Editor for testing
+│   └── test_dummy_speed_editor.py # Unit tests
+└── windows/
+    ├── diagnose_midi.py       # Windows MIDI diagnostic tool
+    └── README.md              # Windows-specific setup instructions
+
 ```
-
-## Configuration
-
-Key mappings are defined in `config/key_mappings.json` and support multiple profiles with different interaction modes:
-
-- **single_tap**: Command executed on single key press
-- **double_tap**: Command executed on double key press (for keys with jog wheel support)
-- **jog**: Command executed when turning jog wheel while key is held (for keys with jog wheel support)
-
-### Profiles
-
-#### Edit Profile
-- **Purpose**: Photo editing with jog wheel support for parameter adjustment
-- **Jog Wheel Keys**: CAM1-CAM9 keys support jog wheel interaction (defined by `jog` mapping)
-- **Double-tap**: Resets the associated parameter
-- **Jog**: Adjusts the parameter while key is held
-
-#### Library Profile
-- **Purpose**: Photo browsing and selection
-- **Interaction**: Simple single-tap commands for navigation
-
-### Generating XML Profiles
-
-XML profiles are generated from the JSON configuration:
-
-```bash
-python3 scripts/generate_profiles.py config/key_mappings.json
-```
-
-This creates the XML files in the `profiles/` directory that MIDI2LR can load.
-
-### Customizing Mappings
-
-Edit `config/key_mappings.json` to customize key mappings:
-
-1. Modify existing mappings in the `profiles` section
-2. Add new profiles by creating new profile objects
-3. Update jog modes in the `jog_modes` section
-4. Regenerate XML profiles using the script above
-
-Keys automatically support jog wheel functionality when they have a `jog` mapping defined in their profile configuration.
-
-### MIDI Controller Mappings
-
-The current mappings are shown in the generated XML files. Key features:
-
-- **CAM1-CAM9**: Dual-function keys in edit mode (single-tap resets, jog adjusts)
-- **Navigation keys**: Standard single-tap commands for photo navigation
-- **Jog wheel**: Supports different modes (absolute, relative) for precise control
-- **Profile switching**:
-  - **SOURCE key**: Switches to library profile + executes `SwToMlibrary` command
-  - **TIMELINE key**: Switches to edit profile + executes `SwToMdevelop` command
-  - Runtime profile switching also supported via `set_profile()` method

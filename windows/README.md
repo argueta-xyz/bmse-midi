@@ -2,34 +2,29 @@
 
 This directory contains scripts and information for setting up MIDI functionality on Windows, specifically for the BlackMagic Speed Editor.
 
-## 1. Install Dependencies
+## 1. Pre-installation for Windows
 
-To use the BlackMagic Speed Editor as a MIDI controller on Windows, you need to install a few dependencies:
+Some Python packages require a C++ compiler during installation. On Windows, you'll need:
 
-### Manual Installation
+**Visual Studio Build Tools**
+1.  **Download the installer**: Go to the [Visual Studio Downloads page](https://visualstudio.microsoft.com/downloads/) and scroll down to "Tools for Visual Studio". Download the "Build Tools for Visual Studio".
+2.  **Run the installer**: In the "Workloads" tab, check the box for "Desktop development with C++".
 
-1.  **Create and Activate Python Virtual Environment**:
-    *   Ensure you have Python 3 installed.
-    *   In your project's root directory, create a virtual environment:
-        ```bash
-        (bmse-midi)$ python -m venv venv
-        ```
-    *   Activate the virtual environment:
-        ```bash
-        (bmse-midi)$ .\venv\Scripts\activate
-        ```
+**Use the Correct Command Prompt**
+To ensure the C++ compiler is correctly recognized, use the dedicated command prompt:
+1.  Open the Windows Start Menu and type `x64 Native Tools`.
+2.  Select the "x64 Native Tools Command Prompt for VS" to open it.
+3.  In this new command prompt, navigate to your project folder.
 
-2.  **Install loopMIDI:**
-    *   Download loopMIDI from [https://www.tobias-erichsen.de/software/loopmidi.html](https://www.tobias-erichsen.de/software/loopmidi.html).
-    *   Install loopMIDI. You may need to run the installer as an Administrator.
-    *   Restart your computer after installation.
+### For HIDAPI DLL
+If you encounter a `FileNotFoundError` related to `hidapi.dll` during or after installing Python dependencies, it means the underlying C library for the `hid` Python package is missing from your system PATH.
 
-3.  **Install Python Dependencies:**
-    *   Ensure you have Python 3 installed.
-    *   In your project's root directory:
-        ```bash
-        (bmse-midi)$ pip install -r requirements_windows.txt
-        ```
+1.  **Download the `hidapi.dll` Library**: Go to the official [hidapi releases page on GitHub](https://github.com/libusb/hidapi/releases).
+2.  **Locate the Correct DLL**: Download the appropriate `hidapi.dll` for your system (usually `x64` for 64-bit Windows).
+3.  **Place the DLL**: Copy `hidapi.dll` into one of the following locations:
+    *   The `System32` directory (e.g., `C:\Windows\System32`).
+    *   The directory where your Python executable is located (e.g., `path\to\your\venv\Scripts`).
+    *   Any directory included in your system's PATH environment variable.
 
 ## 2. Configure Virtual MIDI Port
 

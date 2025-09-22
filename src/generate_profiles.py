@@ -5,11 +5,14 @@ from pathlib import Path
 import sys
 import os
 import json
+import argparse
 
 # Add the parent directory to the path to import bmd
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import importlib.util
-spec = importlib.util.spec_from_file_location("bmd", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "blackmagic-speededitor", "bmd.py"))
+spec = importlib.util.spec_from_file_location("bmd",
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         "external", "blackmagic-speededitor", "bmd.py"))
 bmd = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bmd)
 SpeedEditorKey = bmd.SpeedEditorKey
@@ -117,11 +120,23 @@ def format_xml(element):
     return xml_str + '\n'.join(formatted_lines)
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python generate_profiles.py <config_path>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='Generate XML profiles from a JSON configuration.')
+    parser.add_argument(
+        '--config',
+        type=str,
+        default='config/key_mappings.json',
+        help='Path to the JSON key mappings configuration file.'
+    )
+    parser.add_argument(
+        '--output_dir',
+        type=str,
+        default='config/profiles',
+        help='Directory to save the generated XML profiles.'
+    )
+    args = parser.parse_args()
 
-    config_path = sys.argv[1]
+    config_path = args.config
+    output_dir = Path(args.output_dir)
 
     if not os.path.exists(config_path):
         print(f"Error: Configuration file {config_path} not found")
@@ -131,8 +146,7 @@ def main():
     config = load_json_config(config_path)
 
     # Create profiles directory if it doesn't exist
-    profiles_dir = Path('profiles')
-    profiles_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(exist_ok=True)
 
     # Generate XML files for each profile
     for profile_key, profile_data in config['profiles'].items():
@@ -140,7 +154,7 @@ def main():
         xml_content = format_xml(xml_root)
 
         # Write to file
-        output_file = profiles_dir / f"{profile_data['name']}.xml"
+        output_file = output_dir / f"{profile_data['name']}.xml"
         with open(output_file, 'w') as f:
             f.write(xml_content)
 
