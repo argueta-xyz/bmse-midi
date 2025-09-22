@@ -1,11 +1,11 @@
-# bmse-midi: Blackmagic Speed Editor MIDI Interface
+# bmse-midi: Blackmagic Speed Editor for Lightroom Classic (MIDI2LR)
 
-This project allows you to use your Blackmagic Design Speed Editor as a customizable MIDI controller, primarily designed for integration with applications like Adobe Lightroom Classic via MIDI2LR.
+Use your Blackmagic Design Speed Editor as a customizable MIDI controller, optimized for integration with Adobe Lightroom Classic via MIDI2LR.
 
 ## Features
 
 *   **Customizable Key Mappings**: Define MIDI messages for each Speed Editor key in `config/key_mappings.json`.
-*   **Multiple Profiles**: Switch between different key mapping profiles (e.g., 'Edit' and 'Library') for various workflows.
+*   **Multiple Profiles**: Switch between different key mappings  for different workflows (e.g., 'Develop' and 'Library').
 *   **Jog Wheel Support**: Configurable jog wheel behavior with different modes (shuttle, jog, scroll) and sensitivity.
 *   **LED Feedback**: Visual feedback on the Speed Editor's LEDs based on key states and jog modes.
 *   **Cross-Platform**: Supports Windows, macOS, and Linux.
