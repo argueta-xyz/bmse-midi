@@ -66,7 +66,7 @@ If you are using MIDI2LR, you can import the provided configuration file:
 After setting up the virtual MIDI port, you can run the main Python script from the project root:
 
 ```bash
-(bmse-midi)$ python speed_editor_midi.py
+(bmse-midi)$ python src/speed_editor_midi.py
 ```
 
 ## 5. Diagnostic Tool (`diagnose_midi.py`)

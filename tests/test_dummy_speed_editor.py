@@ -9,7 +9,7 @@ import importlib.util
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 # Get the path to the blackmagic-speededitor directory
-bmd_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'blackmagic-speededitor')
+bmd_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'external', 'blackmagic-speededitor')
 bmd_path = os.path.join(bmd_dir, 'bmd.py')
 
 # Load the bmd module dynamically
@@ -18,7 +18,7 @@ bmd = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bmd)
 
 # Get the path to speed_editor_midi.py
-speed_editor_midi_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'speed_editor_midi.py')
+speed_editor_midi_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'speed_editor_midi.py')
 
 # Load the speed_editor_midi module dynamically
 spec_midi = importlib.util.spec_from_file_location("speed_editor_midi", speed_editor_midi_path)

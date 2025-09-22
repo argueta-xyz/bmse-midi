@@ -10,7 +10,10 @@ from typing import List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'blackmagic-speededitor'))
+# Add the project root to sys.path for local module imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'external', 'blackmagic-speededitor'))
 from bmd import (
     SpeedEditor,
     SpeedEditorHandler,
@@ -19,7 +22,7 @@ from bmd import (
     SpeedEditorKey,
     SpeedEditorLed,
 )
-from key_types import (
+from src.key_types import (
     BaseKey,
     SingleKey,
     ToggleKey,
