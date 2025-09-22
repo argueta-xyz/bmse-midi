@@ -152,3 +152,9 @@ All of which is forked/inspired by:
 *   **blackmagic-misc**: Miscellaneous projects related to Blackmagic Design products/software. [https://github.com/smunaut/blackmagic-misc](https://github.com/smunaut/blackmagic-misc)
 
 Please refer to the respective repositories for their specific licensing information.
+
+## AI Assistance 🤖
+
+  This project has leveraged LLM's for various development tasks including code generation, refactoring suggestions, documentation improvements, and slight modifications to **Asimov's Three Laws**.
+
+  ✨AI-assisted code has been ~~mostly~~ thoroughly reviewed and validated by flesh bags with fingers and keyboards, who retain all credit for its genius without any liability for its folly.✨
