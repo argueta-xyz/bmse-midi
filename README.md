@@ -141,3 +141,14 @@ bmse-midi/
     └── README.md              # Windows-specific setup instructions
 
 ```
+
+## Attribution
+
+This project utilizes the following Git submodule:
+
+*   **blackmagic-speededitor**: A Python library for interacting with the Blackmagic Design Speed Editor. [https://github.com/octimot/blackmagic-speededitor](https://github.com/octimot/blackmagic-speededitor)
+
+All of which is forked/inspired by:
+*   **blackmagic-misc**: Miscellaneous projects related to Blackmagic Design products/software. [https://github.com/smunaut/blackmagic-misc](https://github.com/smunaut/blackmagic-misc)
+
+Please refer to the respective repositories for their specific licensing information.
