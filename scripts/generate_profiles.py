@@ -23,8 +23,13 @@ def create_xml_profile(profile_name, profile_data):
     """Create XML profile from JSON data.
 
     MIDI Channel System:
-    - Single tap: Channel 1 (e.g., CUT = note 15, channel 1)
-    - Double tap: Channel 2 (e.g., CUT = note 15, channel 2)
+    - Toggle on: Channel 1 (complete note_on/note_off pair when toggling ON)
+    - Toggle off: Channel 2 (complete note_on/note_off pair when toggling OFF)
+    - Single tap: Channel 1 (note_on when pressed, note_off when released)
+    - Double tap: Channel 2 (note_on when double-tapped, note_off when released)
+    - Jog wheel: Channel 3 (continuous control changes)
+
+    Note: Toggleable keys create TWO entries in the XML - one for each channel
     """
     root = ET.Element('settings')
 
@@ -41,6 +46,8 @@ def create_xml_profile(profile_name, profile_data):
         single_tap = mappings.get('single_tap')
         double_tap = mappings.get('double_tap')
         jog = mappings.get('jog')
+        toggle_on = mappings.get('toggle_on')
+        toggle_off = mappings.get('toggle_off')
 
         # Check for invalid configurations
         if single_tap is not None and jog is not None:
@@ -49,8 +56,22 @@ def create_xml_profile(profile_name, profile_data):
         # Calculate MIDI note value (same for all types)
         base_note = key_enum.value
 
+        # Handle toggleable keys (toggle_on/toggle_off)
+        if toggle_on:
+            # Toggle ON events go on channel 1
+            setting = ET.SubElement(root, 'setting')
+            setting.set('channel', '1')
+            setting.set('note', str(base_note))  # Toggle on: channel 1
+            setting.set('command_string', toggle_on)
+
+            # Toggle OFF events go on channel 2
+            setting = ET.SubElement(root, 'setting')
+            setting.set('channel', '2')
+            setting.set('note', str(base_note))  # Toggle off: channel 2
+            setting.set('command_string', toggle_off)
+
         # Add single tap mapping OR jog wheel mapping (exclusive)
-        if single_tap:
+        elif single_tap:
             setting = ET.SubElement(root, 'setting')
             setting.set('channel', '1')
             setting.set('note', str(key_enum.value))  # Single tap: channel 1
@@ -58,8 +79,8 @@ def create_xml_profile(profile_name, profile_data):
         elif jog:
             # Use the key's enum value as CC number for jog wheel
             setting = ET.SubElement(root, 'setting')
-            setting.set('channel', '1')
-            setting.set('controller', str(key_enum.value))  # Jog wheel: channel 1
+            setting.set('channel', '3')
+            setting.set('controller', str(key_enum.value))  # Jog wheel: channel 3
             setting.set('command_string', jog)
 
         # Add double tap mapping if defined (can coexist with jog)
