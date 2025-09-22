@@ -8,6 +8,8 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Any
 
+logger = logging.getLogger(__name__)
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'blackmagic-speededitor'))
 from bmd import (
     SpeedEditor,
