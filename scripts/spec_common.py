@@ -12,7 +12,11 @@ PROJECT_ROOT = os.getcwd()
 COMMON_ANALYSIS_CONFIG = {
     'scripts': [os.path.join(PROJECT_ROOT, 'src', 'speed_editor_midi.py')],
     'pathex': [PROJECT_ROOT, os.path.join(PROJECT_ROOT, 'external', 'blackmagic-speededitor')],
-    'binaries': [],
+    'binaries': [
+        ('/opt/homebrew/lib/libhidapi.dylib', '.'),
+        ('/opt/homebrew/lib/libhidapi.0.dylib', '.'),
+        ('/opt/homebrew/lib/libhidapi.0.15.0.dylib', '.'),
+    ],
     'datas': [
         (os.path.join(PROJECT_ROOT, 'config'), 'config'),
         (os.path.join(PROJECT_ROOT, 'external'), 'external'),
