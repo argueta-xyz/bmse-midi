@@ -89,16 +89,18 @@ class MidiHandler(SpeedEditorHandler):
 		"""Set up MIDI output with Windows virtual port support."""
 		if platform.system() == 'Windows':
 			try:
-				# Import Windows-specific MIDI setup
-				from windows.midi_setup import get_midi_output_port
-				midi_out = get_midi_output_port()
-				if midi_out:
+				output_ports = mido.get_output_names()
+				if 'BMSpeedEditor 1' in output_ports:
+					midi_out = mido.open_output('BMSpeedEditor 1')
 					print(f'MIDI output connected to: {midi_out.name}')
 					return midi_out
-			except ImportError:
-				logger.warning('Windows MIDI setup module not found, using default MIDI setup')
+				else:
+					logger.warning('BMSpeedEditor 1 not found, trying default MIDI output.')
+					midi_out = mido.open_output() # Fallback to default if BMSpeedEditor 1 not found
+					print(f'MIDI output connected to: {midi_out.name}')
+					return midi_out
 			except Exception as e:
-				logger.error(f'Windows MIDI setup failed: {e}')
+				logger.error(f'Windows MIDI setup failed to open BMSpeedEditor 1 or default: {e}')
 
 		# Fallback to standard MIDI setup
 		try:
@@ -304,11 +306,11 @@ class MidiHandler(SpeedEditorHandler):
 		for midi_msg in midi_msgs:
 			try:
 				if midi_msg.msg_type == 'note_on':
-					msg = mido.Message('note_on', note=midi_msg.note, velocity=midi_msg.velocity, channel=midi_msg.channel-1)
+					msg = mido.Message('note_on', note=midi_msg.note, velocity=midi_msg.velocity, channel=midi_msg.channel)
 				elif midi_msg.msg_type == 'note_off':
-					msg = mido.Message('note_off', note=midi_msg.note, velocity=midi_msg.velocity, channel=midi_msg.channel-1)
+					msg = mido.Message('note_off', note=midi_msg.note, velocity=midi_msg.velocity, channel=midi_msg.channel)
 				elif midi_msg.msg_type == 'control_change':
-					msg = mido.Message('control_change', channel=midi_msg.channel-1, control=midi_msg.note, value=midi_msg.velocity)
+					msg = mido.Message('control_change', channel=midi_msg.channel, control=midi_msg.note, value=midi_msg.velocity)
 				else:
 					logger.error(f"Unknown MIDI message type: {midi_msg.msg_type}")
 					continue
