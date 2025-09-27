@@ -333,7 +333,7 @@ class MidiHandler(SpeedEditorHandler):
 		# Apply LED changes if any updates were made
 		if led_updates:
 			self.se.set_leds(self.leds)
-			logger.debug(f"Updated LEDs: {[f'bit {l.led_bit} {"ON" if l.state else "OFF"}' for l in led_updates]}")
+			logger.debug(f'Updated LEDs: {[f"bit {l.led_bit} {"ON" if l.state else "OFF"}" for l in led_updates]}')
 
 	def battery(self, charging: bool, level: int):
 		print(f"Battery {level:d} %{' and charging' if charging else '':s}")
