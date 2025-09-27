@@ -1,0 +1,129 @@
+name: Build Releases
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Create virtual environment
+      run: python -m venv .venv
+
+    - name: Activate virtual environment and install dependencies
+      run: |
+        .venv\Scripts\activate.bat
+        pip install -r requirements_windows.txt
+        pip install pyinstaller
+
+    - name: Build Windows executable
+      run: |
+        .venv\Scripts\activate.bat
+        pyinstaller scripts\bmse_midi-windows.spec --clean --noconfirm
+
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: bmse-midi-windows
+        path: dist/bmse_midi/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Create virtual environment
+      run: python -m venv .venv
+
+    - name: Install dependencies
+      run: |
+        source .venv/bin/activate
+        pip install -r requirements_macos.txt
+        pip install pyinstaller
+
+    - name: Build macOS application
+      run: |
+        source .venv/bin/activate
+        pyinstaller scripts/bmse_midi-macos.spec --clean --noconfirm
+
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: bmse-midi-macos
+        path: dist/bmse_midi.app/
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libasound2-dev portaudio19-dev libportaudio2 libportaudiocpp0
+
+    - name: Create virtual environment
+      run: python -m venv .venv
+
+    - name: Install dependencies
+      run: |
+        source .venv/bin/activate
+        pip install -r requirements_linux.txt
+        pip install pyinstaller
+
+    - name: Build Linux executable
+      run: |
+        source .venv/bin/activate
+        pyinstaller scripts/bmse_midi-linux.spec --clean --noconfirm
+
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: bmse-midi-linux
+        path: dist/bmse_midi/
+
+  create-release:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Create release archives
+      run: |
+        cd bmse-midi-windows && zip -r ../bmse-midi-windows.zip . && cd ..
+        cd bmse-midi-macos && zip -r ../bmse-midi-macos.zip . && cd ..
+        cd bmse-midi-linux && tar -czf ../bmse-midi-linux.tar.gz . && cd ..
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          bmse-midi-windows.zip
+          bmse-midi-macos.zip
+          bmse-midi-linux.tar.gz
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
