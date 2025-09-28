@@ -20,4 +20,9 @@
 <setting channel="2" note="15" command_string="ToggleZoomOffOn" />
 <setting channel="1" note="27" command_string="SwToMdevelop" />
 <setting channel="1" note="60" command_string="AutoTone" />
+<setting channel="1" note="51" command_string="SetRating1" />
+<setting channel="1" note="52" command_string="SetRating2" />
+<setting channel="1" note="53" command_string="SetRating3" />
+<setting channel="1" note="54" command_string="SetRating4" />
+<setting channel="1" note="55" command_string="SetRating5" />
 </settings>

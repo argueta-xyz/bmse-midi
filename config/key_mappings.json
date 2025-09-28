@@ -240,6 +240,36 @@
           "actions": {
             "press": "AutoTone"
           }
+        },
+        "CAM1": {
+          "type": "SINGLE",
+          "actions": {
+            "press": "SetRating1"
+          }
+        },
+        "CAM2": {
+          "type": "SINGLE",
+          "actions": {
+            "press": "SetRating2"
+          }
+        },
+        "CAM3": {
+          "type": "SINGLE",
+          "actions": {
+            "press": "SetRating3"
+          }
+        },
+        "CAM4": {
+          "type": "SINGLE",
+          "actions": {
+            "press": "SetRating4"
+          }
+        },
+        "CAM5": {
+          "type": "SINGLE",
+          "actions": {
+            "press": "SetRating5"
+          }
         }
       }
     }

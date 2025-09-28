@@ -306,17 +306,17 @@ class MidiHandler(SpeedEditorHandler):
 		for midi_msg in midi_msgs:
 			try:
 				if midi_msg.msg_type == 'note_on':
-					msg = mido.Message('note_on', note=midi_msg.note, velocity=midi_msg.velocity, channel=midi_msg.channel)
+					msg = mido.Message('note_on', note=midi_msg.note, velocity=midi_msg.velocity, channel=midi_msg.channel-1)
 				elif midi_msg.msg_type == 'note_off':
-					msg = mido.Message('note_off', note=midi_msg.note, velocity=midi_msg.velocity, channel=midi_msg.channel)
+					msg = mido.Message('note_off', note=midi_msg.note, velocity=midi_msg.velocity, channel=midi_msg.channel-1)
 				elif midi_msg.msg_type == 'control_change':
-					msg = mido.Message('control_change', channel=midi_msg.channel, control=midi_msg.note, value=midi_msg.velocity)
+					msg = mido.Message('control_change', channel=midi_msg.channel-1, control=midi_msg.note, value=midi_msg.velocity)
 				else:
 					logger.error(f"Unknown MIDI message type: {midi_msg.msg_type}")
 					continue
 
 				self.midi_out.send(msg)
-				logger.debug(f"MIDI {midi_msg.msg_type}: {midi_msg.velocity} (note: {midi_msg.note}, channel: {midi_msg.channel})")
+				logger.debug(f"MIDI {midi_msg.msg_type}: {midi_msg.velocity} (note: {midi_msg.note}, channel: {midi_msg.channel-1})")
 			except Exception as e:
 				logger.error(f'MIDI send error: {e}')
 
